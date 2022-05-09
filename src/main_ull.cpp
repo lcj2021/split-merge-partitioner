@@ -3,7 +3,7 @@
 using namespace std;
 #define endl "\n"
 typedef unsigned long long ull;
-const ull N = 1e7 + 10, M = 3e8 + 10;
+const ull N = 1e7 + 10, M = 2e8 + 10;
 
 DEFINE_int32(p, 10, "number of parititions");
 DEFINE_string(filename, "", "the file name of the input graph");
@@ -78,13 +78,9 @@ namespace debugger
 }
 using namespace debugger;
 
-// ull h[N], e[M], ne[M], idx;
-// bool st[M], can_cover[N];
-// ull degree[N];
-vector<ull> h(N), e(M), ne(M);
-int idx;
-vector<bool> st(M), can_cover(M);
-vector<ull> degree(N);
+ull h[N], e[M], ne[M], idx;
+bool st[M], can_cover[N];
+ull degree[N];
 
 ull degree_1_vertex_cnt;
 unordered_set<ull> vertex_set;
@@ -103,8 +99,7 @@ void add_edge (int a, int b)
 void read_graph()
 {
     freopen(FLAGS_filename.data(), "r", stdin);
-    // memset(h, - 1, sizeof h);
-    fill(h.begin(), h.end(), -1);
+    memset(h, - 1, sizeof h);
 
     string line;
     int line_cnt = 0;
