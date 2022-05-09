@@ -6,5 +6,5 @@ CXX_FLAGS =  -Wall -g -std=c++20 -pthread -fopenmp -DDLOCAL  -Ofast -DNDEBUG -DL
 
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/jack/Documents/C++/tag/./threadpool11/include 
+CXX_INCLUDES = -I/home/jack/Documents/blog/Tag_Propagation_Partition/./threadpool11/include 
 

@@ -84,7 +84,7 @@ mutex
 thread
 -
 
-/home/jack/Documents/C++/tag/src/dense_bitset.hpp
+/home/jack/Documents/blog/Tag_Propagation_Partition/src/dense_bitset.hpp
 cstdio
 -
 cstdlib
@@ -94,15 +94,15 @@ cstring
 stdint.h
 -
 util.hpp
-/home/jack/Documents/C++/tag/src/util.hpp
+/home/jack/Documents/blog/Tag_Propagation_Partition/src/util.hpp
 
-/home/jack/Documents/C++/tag/src/main.cpp
+/home/jack/Documents/blog/Tag_Propagation_Partition/src/main.cpp
 bits/stdc++.h
 -
 dense_bitset.hpp
-/home/jack/Documents/C++/tag/src/dense_bitset.hpp
+/home/jack/Documents/blog/Tag_Propagation_Partition/src/dense_bitset.hpp
 
-/home/jack/Documents/C++/tag/src/util.hpp
+/home/jack/Documents/blog/Tag_Propagation_Partition/src/util.hpp
 utility
 -
 chrono
@@ -116,5 +116,5 @@ gflags/gflags.h
 glog/logging.h
 -
 threadpool11/threadpool11.hpp
-/home/jack/Documents/C++/tag/src/threadpool11/threadpool11.hpp
+/home/jack/Documents/blog/Tag_Propagation_Partition/src/threadpool11/threadpool11.hpp
 

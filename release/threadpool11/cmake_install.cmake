@@ -1,4 +1,4 @@
-# Install script for directory: /home/jack/Documents/C++/tag/threadpool11
+# Install script for directory: /home/jack/Documents/blog/Tag_Propagation_Partition/threadpool11
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -38,22 +38,22 @@ if(NOT DEFINED CMAKE_CROSSCOMPILING)
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/threadpool11" TYPE FILE FILES "/home/jack/Documents/C++/tag/threadpool11/include/threadpool11/threadpool11.hpp")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/threadpool11" TYPE FILE FILES "/home/jack/Documents/blog/Tag_Propagation_Partition/threadpool11/include/threadpool11/threadpool11.hpp")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/threadpool11" TYPE FILE FILES "/home/jack/Documents/C++/tag/threadpool11/include/threadpool11/worker.hpp")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/threadpool11" TYPE FILE FILES "/home/jack/Documents/blog/Tag_Propagation_Partition/threadpool11/include/threadpool11/worker.hpp")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/threadpool11" TYPE FILE FILES "/home/jack/Documents/C++/tag/threadpool11/include/threadpool11/pool.hpp")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/threadpool11" TYPE FILE FILES "/home/jack/Documents/blog/Tag_Propagation_Partition/threadpool11/include/threadpool11/pool.hpp")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/threadpool11" TYPE FILE FILES "/home/jack/Documents/C++/tag/threadpool11/include/threadpool11/utility.hpp")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/threadpool11" TYPE FILE FILES "/home/jack/Documents/blog/Tag_Propagation_Partition/threadpool11/include/threadpool11/utility.hpp")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "/home/jack/Documents/C++/tag/release/threadpool11/libthreadpool11.a")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib" TYPE STATIC_LIBRARY FILES "/home/jack/Documents/blog/Tag_Propagation_Partition/release/threadpool11/libthreadpool11.a")
 endif()
 
