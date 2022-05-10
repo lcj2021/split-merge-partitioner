@@ -23,6 +23,7 @@ add_subdirectory(threadpool11)
 include_directories(./threadpool11/include)
 
 add_executable (main
-    src/main.cpp)
+    src/main.cpp
+    src/util.cpp)
 
 target_link_libraries (main glog gflags threadpool11)

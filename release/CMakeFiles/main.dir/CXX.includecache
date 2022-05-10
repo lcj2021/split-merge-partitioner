@@ -101,6 +101,8 @@ bits/stdc++.h
 -
 dense_bitset.hpp
 /home/jack/Documents/blog/Tag_Propagation_Partition/src/dense_bitset.hpp
+util.hpp
+/home/jack/Documents/blog/Tag_Propagation_Partition/src/util.hpp
 
 /home/jack/Documents/blog/Tag_Propagation_Partition/src/util.hpp
 utility

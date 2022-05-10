@@ -1,5 +1,6 @@
 #include <bits/stdc++.h>
 #include "dense_bitset.hpp"
+#include "util.hpp"
 using namespace std;
 #define endl "\n"
 typedef unsigned long long ull;
@@ -362,6 +363,9 @@ int main(int argc, char *argv[])
 
     read_graph();
 
+    Timer timer;
+    timer.start();
+
     int random_cnt = FLAGS_p * 5;
     random_tag(random_cnt);
     bfs_walk(random_cnt);
@@ -376,5 +380,9 @@ int main(int argc, char *argv[])
     LOG(degree_1_vertex_cnt);
     delete[] global_tag_distribute;
     delete[] bfs_src;
+
+    timer.stop();
+    LOG(timer.get_time());
+    
     return 0;
 }
