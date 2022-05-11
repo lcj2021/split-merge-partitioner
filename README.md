@@ -17,8 +17,10 @@ make
 
 
 # Statistic
+- The datasets are from [snap](http://snap.stanford.edu/data/index.html)
 
-LJ
+
+[LJ](http://snap.stanford.edu/data/com-LiveJournal.html)
 
 | p    | VERTEX_CNT | ALL_TAG_CNT | Time    |
 | ---- | ---------- | ----------- | ------- |
@@ -31,7 +33,7 @@ LJ
 
 
 
-Amazon
+[Amazon](http://snap.stanford.edu/data/com-Amazon.html)
 
 | p    | VERTEX_CNT | ALL_TAG_CNT | Time    |
 | ---- | ---------- | ----------- | ------- |
@@ -44,7 +46,7 @@ Amazon
 
 
 
-Orkut
+[Orkut](http://snap.stanford.edu/data/com-Orkut.html)
 
 | p    | VERTEX_CNT | ALL_TAG_CNT | Time    |
 | ---- | ---------- | ----------- | ------- |
@@ -55,3 +57,38 @@ Orkut
 | 256  | 3072441    | 8726848     | 286.928 |
 | 512  | 3072441    | 9174221     | 383.242 |
 
+
+# Results Comparison on Ubuntu 18.04 (Single 128Gb Memory Machine)
+
+## NE 
+
+- The results of Neighborhood Expansion (NE) algorithm.
+[Graph Edge Partitioning via Neighborhood Heuristic](http://www.kdd.org/kdd2017/papers/view/graph-edge-partitioning-via-neighborhood-heuristic)
+
+
+[LJ](http://snap.stanford.edu/data/com-LiveJournal.html)
+
+| p    | VERTEX_CNT | Time    | RF      |
+| ---- | ---------- | ------- | ------- |
+| 8    | 3997962    | 24.3755 | 1.31405 |
+| 16   | 3997962    | 25.3646 | 1.43483 |
+| 32   | 3997962    | 31.9216 | 1.56744 |
+| 128  | 3997962    | 76.6040 | 1.89865 |
+| 256  | 3997962    | 146.308 | 2.08690 |
+| 512  | 3997962    | 280.972 | 2.31126 |
+
+
+[Orkut](http://snap.stanford.edu/data/com-Orkut.html)
+
+| p    | VERTEX_CNT | ALL_TAG_CNT | Time    | RF      |
+| ---- | ---------- | ----------- | ------- | ------- |
+| 8    | 3072441    | 6507625     | 75.3679 | 1.74282 |
+| 16   | 3072441    | 7768115     | 84.4289 | 2.05309
+| 32   | 3072441    |             | 114.714 | 2.51501 |
+| 128  | 3072441    | 8741467     | 263.342 | 3.75545 |
+| 256  | 3072441    | 8726848     | 457.818 | 4.56794 | 
+| 512  | 3072441    | 9174221     | 871.835 | 5.60136 |
+
+## TP
+
+TBD
