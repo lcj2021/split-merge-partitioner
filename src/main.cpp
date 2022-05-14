@@ -86,6 +86,7 @@ vector<ull> h(N), e(M), ne(M);
 int idx;
 vector<bool> st(M), can_cover(M);
 vector<ull> degree(N);
+vector<ull> tag2size;
 
 ull degree_1_vertex_cnt;
 unordered_set<ull> vertex_set;
@@ -341,6 +342,47 @@ void degree_1_vertex_assignment()
     delete[] curr_vertex_neighbor_tag_cnt;
 }
 
+void union_tag()
+{
+	priority_queue<array<int, 2>, vector<array<int, 2>>, greater<array<int, 2>>> pq;
+
+	for (int i = 1; i <= FLAGS_p / 2; i++)
+		pq.push({0, i});
+	vector<int> block2goal(FLAGS_p + 1, 0);
+
+
+	sort(global_tag_distribute + 1, global_tag_distribute + 1 + FLAGS_p);
+	for (int i = FLAGS_p; i >= 1; -- i)
+	{
+		const auto [v_cnt, p_id] = pq.top();
+        // cout << v_cnt + (int)global_tag_distribute[i] << ' ' << p_id << ' ' << i << endl;
+		pq.pop();
+		block2goal[i] = p_id;
+
+		//tmp = make_pair(block[i].first, 加入序号)
+		pq.push({v_cnt + (int)global_tag_distribute[i], p_id});
+	}
+
+    tag2size = vector<ull>(FLAGS_p / 2 + 1, 0);
+	while (!pq.empty())
+	{
+        tag2size[pq.top()[1]] = pq.top()[0];
+		pq.pop();
+	}
+    // LOG(block2goal);
+    LOG(tag2size);
+
+    // map<int, int> cnt;
+    // int sum = 0;
+    // for (int i = 1; i <= FLAGS_p; ++ i)
+    // {
+    //     cnt[block2goal[i]]++;
+    //     sum ++;
+    // }
+    // LOG(cnt);
+    // LOG(sum);
+}
+
 // ./main -p 8 -filename ../dataset/mini.txt
 // ./main -p 8 -filename ../dataset/com-amazon.ungraph.txt
 // ./main -p 16 -filename ../dataset/com-lj.ungraph.txt
@@ -370,10 +412,13 @@ int main(int argc, char *argv[])
     random_tag(random_cnt);
     bfs_walk(random_cnt);
     degree_1_vertex_assignment();
+    union_tag();
 
     int all2 = 0;
-    for (int i = 1; i <= FLAGS_p; ++ i)
-        cout << i << " : " << global_tag_distribute[i] << endl, all2 += global_tag_distribute[i];
+    // for (int i = 1; i <= FLAGS_p; ++ i)
+    //     cout << i << " : " << global_tag_distribute[i] << endl, all2 += global_tag_distribute[i];
+    for (int i = 1; i <= FLAGS_p / 2; ++ i)
+        cout << i << " : " << tag2size[i] << endl, all2 += tag2size[i];
     cout << "VERTEX_CNT : " << vertex_set.size() << endl;
     cout << "ALL_TAG_CNT : " << all2 << endl;
 
