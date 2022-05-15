@@ -1,5 +1,39 @@
 # Tag_Propagation_Partition
 
+
+
+## Algorithm
+
+参数：-p 划分块数
+
+### 0 建图
+
+### 1 random_tag
+
+随机选取$p \times 5$ 个结点，给它们随机打上[1, p]的tag。这些结点加入`queue`作为第一轮bfs_walk的源点
+
+### 2 bfs_walk
+
+分r轮进行，终止条件为图上所有结点的tag均能覆盖其邻居的tag。遍历时会忽略度数为1的结点。每轮每个结点只会遍历一次（vis数组记录），每次遍历只会打1个tag。
+
+#### 第1轮：
+
+以`1阶段`的种子结点作为起始点作多源BFS，遍历到一个点（记为top）时，考察top的还未被覆盖的邻居结点的`tag_list`，从中选取其邻居中tag最多的，（若邻居最多的tag不唯一）当前已分配最少的tag分配给`top`。
+
+分配完成对`top`的出边进行检查，若更新tag后的`top`能覆盖其某邻居，则将对应边（st数组记录）置位1。往后的遍历将不再考察该边。若`top`成功覆盖其所有邻居，则将`covered_cnt+1`；若仍未成功，则加入下一轮的遍历队列中。
+
+#### 第2~r轮
+
+源点来自于上一轮未能覆盖其邻居的结点。其余分配、检查逻辑均与第1轮相同。
+
+### 3 degree_1_vertex_assignment
+
+将度数为1的节点打上其邻居的tag，分配其当前已分配最少的tag
+
+### 4 union_tag
+
+将p个tag进行合并，以求达到tag间规模的balance
+
 ## Build
 ```shell
 mkdir release
