@@ -3,6 +3,7 @@
 #include "util.hpp"
 using namespace std;
 #define endl "\n"
+#define all(x) x.begin(), x.end()
 typedef unsigned long long ull;
 const ull N = 1e7 + 10, M = 3e8 + 10;
 
@@ -188,16 +189,18 @@ void bfs_walk(int random_cnt)
         LOG(next_round_vertex.size());
 
         if (covered_cnt == vertex_set.size() - degree_1_vertex_cnt)  break;
-        
 
         memset(vis, 0, sizeof vis);
 
         if (round != 1)
+        {
+            // Test for bfs order: degree wise & tag count wise
+            // sort(all(next_round_vertex), [&](int a, int b) {return degree[a] < degree[b];} );
+            // sort(all(next_round_vertex), [&](int a, int b) {return vertex2tag[a].popcount() > vertex2tag[b].popcount();} );
             for (const auto & v : next_round_vertex)    q.push(v);
+        }
         next_round_vertex.clear();
 
-        
-        
         while (q.size())
         {
             ull top = q.front();
@@ -260,13 +263,21 @@ void bfs_walk(int random_cnt)
 
                 // update neighbor's st[] 
                 bool all_neighbor_covered = true;
+                int neighbor_uncovered_cnt = 0;
                 for (int i = h[top]; ~i; i = ne[i])
                 {
                     if (st[i])      continue;
-                    all_neighbor_covered = false;
 
                     int to = e[i];
-                    if (degree[to] == 1)    st[i] = 1;
+                    if (degree[to] == 1)    
+                    {
+                        st[i] = 1;  
+                        continue;
+                    }
+
+                    all_neighbor_covered = false;
+                    ++ neighbor_uncovered_cnt;
+                    
                     if (vertex2tag[to].get(candidate_tag))
                     {
                         st[i] = 1;
@@ -275,7 +286,6 @@ void bfs_walk(int random_cnt)
 
                 if (all_neighbor_covered)   
                 {
-                    // if (!can_cover[top])
                     ++ covered_cnt, can_cover[top] = 1;
                 }
                 else
@@ -412,13 +422,13 @@ int main(int argc, char *argv[])
     random_tag(random_cnt);
     bfs_walk(random_cnt);
     degree_1_vertex_assignment();
-    union_tag();
+    // union_tag();
 
     int all2 = 0;
-    // for (int i = 1; i <= FLAGS_p; ++ i)
-    //     cout << i << " : " << global_tag_distribute[i] << endl, all2 += global_tag_distribute[i];
-    for (int i = 1; i <= FLAGS_p / 2; ++ i)
-        cout << i << " : " << tag2size[i] << endl, all2 += tag2size[i];
+    for (int i = 1; i <= FLAGS_p; ++ i)
+        cout << i << " : " << global_tag_distribute[i] << endl, all2 += global_tag_distribute[i];
+    // for (int i = 1; i <= FLAGS_p / 2; ++ i)
+    //     cout << i << " : " << tag2size[i] << endl, all2 += tag2size[i];
     cout << "VERTEX_CNT : " << vertex_set.size() << endl;
     cout << "ALL_TAG_CNT : " << all2 << endl;
 
