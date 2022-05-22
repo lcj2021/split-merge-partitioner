@@ -24,6 +24,9 @@ include_directories(./threadpool11/include)
 
 add_executable (main
     src/main.cpp
-    src/util.cpp)
+    src/util.cpp
+    src/conversions.cpp
+    src/tag_partitioner.cpp
+    src/graph.cpp)
 
 target_link_libraries (main glog gflags threadpool11)

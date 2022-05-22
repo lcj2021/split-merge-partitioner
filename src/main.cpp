@@ -1,12 +1,15 @@
 #include <bits/stdc++.h>
 #include "dense_bitset.hpp"
 #include "util.hpp"
+#include "tag_partitioner.hpp"
 using namespace std;
 #define endl "\n"
 #define all(x) x.begin(), x.end()
 typedef unsigned long long ull;
 const ull N = 1e7 + 10, M = 3e8 + 10;
 
+DEFINE_string(filetype, "edgelist",
+              "the type of input file (supports 'edgelist' and 'adjlist')");
 DEFINE_int32(p, 10, "number of parititions");
 DEFINE_string(filename, "", "the file name of the input graph");
 
@@ -290,6 +293,8 @@ void bfs_walk(int random_cnt)
                 }
                 else
                 {
+                    // if (neighbor_uncovered_cnt == 1)    
+                    //     LOG(top);
                     next_round_vertex.push_back(top);
                 }
 
@@ -417,6 +422,10 @@ int main(int argc, char *argv[])
 
     Timer timer;
     timer.start();
+
+    Partitioner *partitioner = NULL;
+    partitioner = new TagPartitioner(FLAGS_filename);
+    partitioner->split();
 
     int random_cnt = FLAGS_p * 5;
     random_tag(random_cnt);
