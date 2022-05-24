@@ -58,6 +58,8 @@ class graph_t
 
     void build(const std::vector<edge_t> &edges);
 
+    void build_bidirection(std::vector<edge_t> &edges);
+
     void build_reverse(const std::vector<edge_t> &edges);
 
     adjlist_t &operator[](size_t idx) { return vdata[idx]; };
