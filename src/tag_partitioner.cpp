@@ -58,6 +58,20 @@ TagPartitioner::TagPartitioner(std::string basefilename)
     read_timer.stop();
     LOG(INFO) << "time used for graph input and construction: " << read_timer.get_time();
 
+    // for (auto [u, v] : edges)   cout << u << ' ' << v << endl;  cout << "================" << endl;
+    // for (int i = 1; i <= num_vertices; ++ i)
+    // {
+    //     vid_t v = i - 1;
+    //     for (auto &i : adj_out[v])
+    //     {
+    //         vid_t to = edges[i.v].second + 1;
+    //         cout << v + 1 << ' ' << to << endl;
+    //     }
+    //     cout << endl;
+    // }
+    int sum_d = 0;      for (auto deg : degrees)    sum_d += deg;
+    cout << (double) sum_d / num_vertices << endl;
+
     random_tag(p * 5);
     bfs_walk(p * 5);
 
@@ -79,21 +93,62 @@ void TagPartitioner::split()
     compute_timer.start();
     
 }
+bool TagPartitioner::seed_check(vid_t seed_id)
+{
+    vector<bool> vis(num_vertices);
+    unordered_set<vid_t> all_v;
+    queue<vid_t> q;
+
+    q.push(seed_id);
+
+    for (int i = 1; i <= 4; ++ i)
+    {
+        vector<vid_t> v;
+        while (q.size())
+        {
+            vid_t top_id = q.front();  
+            q.pop();
+
+            if (vis[top_id])   continue;
+            vis[top_id] = true;
+            all_v.insert(top_id);
+
+            for (auto &i : adj_out[top_id])
+            {
+                vid_t to_id = edges[i.v].second;
+                if (vis[to_id])        continue;
+
+                all_v.insert(to_id);
+                v.push_back(to_id);
+            }
+        }
+        for (auto vid : v)  q.push(vid);
+    }
+    
+    // for (auto vid : bfs_src)    cout << vid << ' '; cout << endl;
+    // cout << seed_id + 1 << endl;
+    // for (auto vid : all_v)      cout << vid << ' '; cout << endl;
+    for (auto vid : bfs_src)    
+        if (all_v.count(vid))   
+            return false;
+    return true;
+}
 void TagPartitioner::random_tag(size_t random_cnt)
 {
-//     bfs_src = new int[random_cnt + 1];
+    // bfs_src = new int[random_cnt + 1];
     // ull tag_cnt[FLAGS_p + 1];
 
     global_tag_distribute[0] = 1e18;
-
     while (bfs_src.size() < random_cnt)
     {
         // LOG(INFO) << "bfs_src.size " << bfs_src.size();
-        int vertex_id = gen() % num_vertices;
+        int vertex = (gen() % num_vertices) + 1, vertex_id = vertex - 1;
         // LOG(INFO) << "adj_out[vertex_id].size() " << adj_out[vertex_id].size();
-        if (adj_out[vertex_id].size() + adj_in[vertex_id].size() == 0)     continue;
+        if (adj_out[vertex_id].size() + adj_in[vertex_id].size() == 0)      continue;
 
-        LOG(INFO) << "vertex_id " << vertex_id;
+        if (!seed_check(vertex_id))                                         continue;
+
+        LOG(INFO) << "vertex " << vertex;
 
         int tag = gen() % p + 1;
         vertex2tag[vertex_id].set(tag, 1);
@@ -154,27 +209,27 @@ TagPartitioner::bfs_walk(size_t random_cnt)
 
         while (q.size())
         {
-            vid_t top = q.front();
+            vid_t top_id = q.front();  
             q.pop();
 
-            if (vis[top])    continue;
-            vis[top] = 1;
+            if (vis[top_id])    continue;
+            vis[top_id] = 1;
 
-            // LOG(INFO) << "top " << top;
+            // LOG(INFO) << "top_id " << top_id;
 
             // current vertex cannot cover neighbors yet
-            if (!can_cover[top] && degrees[top] > 1)
+            if (!can_cover[top_id] && degrees[top_id] > 1)
             {
                 // fill (all(curr_vertex_neighbor_tag_cnt), 0);
                 memset(curr_vertex_neighbor_tag_cnt, 0, sizeof(size_t) * (p + 1));
 
-                for (auto &i : adj_out[top])
+                for (auto &i : adj_out[top_id])
                 {
                     if (st[i.v])            continue;
                     // if (!edges[i.v].valid())      continue;
 
-                    vid_t to = edges[i.v].second;
-                    const auto & v2t = vertex2tag[to];
+                    vid_t to_id = edges[i.v].second;
+                    const auto & v2t = vertex2tag[to_id];
                     if (!v2t.empty())
                     {
                         for (int b = 1; b <= p; ++ b)
@@ -205,16 +260,16 @@ TagPartitioner::bfs_walk(size_t random_cnt)
                     }
                 }
 
-                if (candidate_tag > p || candidate_tag < 1)   
+                if (candidate_tag > p || candidate_tag < 1)[[BOOST_UNLIKELY]]
                 {
-                    // LOG(top);
+                    // LOG(top_id);
                 }
                 else
                 {
-                    if (vertex2tag[top].get(candidate_tag) != 1)
+                    if (vertex2tag[top_id].get(candidate_tag) != 1)
                     {
                         ++ global_tag_distribute[candidate_tag];
-                        vertex2tag[top].set_bit(candidate_tag);
+                        vertex2tag[top_id].set_bit(candidate_tag);
                     }
                 }
                 
@@ -223,13 +278,13 @@ TagPartitioner::bfs_walk(size_t random_cnt)
                 bool all_neighbor_covered = true;
                 int neighbor_uncovered_cnt = 0;
 
-                for (auto &i : adj_out[top])
+                for (auto &i : adj_out[top_id])
                 {
                     // if (!edges[i.v].valid())      continue;
                     if (st[i.v])      continue;
 
-                    vid_t to = edges[i.v].second;
-                    if (degrees[to] == 1)    
+                    vid_t to_id = edges[i.v].second;
+                    if (degrees[to_id] == 1)    
                     {
                         st[i.v] = 1;
                         // edges[i.v].remove();
@@ -239,7 +294,7 @@ TagPartitioner::bfs_walk(size_t random_cnt)
                     all_neighbor_covered = false;
                     ++ neighbor_uncovered_cnt;
 
-                    if (vertex2tag[to].get(candidate_tag))
+                    if (vertex2tag[to_id].get(candidate_tag))
                     {
                         st[i.v] = 1;
                         // edges[i.v].remove();
@@ -250,23 +305,23 @@ TagPartitioner::bfs_walk(size_t random_cnt)
 
                 if (all_neighbor_covered)   
                 {
-                    ++ covered_cnt, can_cover[top] = 1;
+                    ++ covered_cnt, can_cover[top_id] = 1;
                 }
                 else
                 {
                     // if (neighbor_uncovered_cnt == 1)    
-                    //     LOG(top);
-                    next_round_vertex.push_back(top);
+                    //     LOG(top_id);
+                    next_round_vertex.push_back(top_id);
                 }
 
             }
             
 
-            for (auto &i : adj_out[top])
+            for (auto &i : adj_out[top_id])
             {
-                vid_t to = edges[i.v].second;
-                if (vis[to]) continue;
-                q.push(to);
+                vid_t to_id = edges[i.v].second;
+                if (vis[to_id]) continue;
+                q.push(to_id);
             }
             
         }

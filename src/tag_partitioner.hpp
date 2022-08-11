@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <unordered_set>
 #include <iostream>
 #include <fstream>
 #include <random>
@@ -43,6 +44,7 @@ private:
 
     void random_tag(size_t random_cnt);
     void bfs_walk(size_t random_cnt);
+    bool seed_check(vid_t uid);
 
 public:
     TagPartitioner(std::string basefilename);
