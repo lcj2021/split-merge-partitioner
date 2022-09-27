@@ -72,8 +72,8 @@ TagPartitioner::TagPartitioner(std::string basefilename)
     int sum_d = 0;      for (auto deg : degrees)    sum_d += deg;
     cout << (double) sum_d / num_vertices << endl;
 
-    random_tag(num_vertices * p / 5000);
-    bfs_walk(num_vertices * p / 5000);
+    random_tag(50* p);
+    bfs_walk(50 * p);
 
     int all2 = 0;
     for (int i = 1; i <= p; ++ i)
@@ -95,50 +95,49 @@ void TagPartitioner::split()
 }
 bool TagPartitioner::seed_check(vid_t seed_id)
 {
-    const int degree_threshold = 6;
-    if (degrees[seed_id] > degree_threshold)             return false;
+    const int MAX_DEG = 17 / 2, MIN_DEG = 3, INF = num_vertices, MAX_DIST = 15;
+    if (degrees[seed_id] > MAX_DEG || degrees[seed_id] < MIN_DEG)             return false;
+
     vector<bool> vis(num_vertices);
+    vector<vid_t> dist(num_vertices, INF);         dist[seed_id] = 0;
     unordered_set<vid_t> all_v;
-    queue<vid_t> q;
+    queue<array<vid_t, 2>> q;           // [curr_dist, curr_vertex]
 
-    q.push(seed_id);
-
-    for (int i = 1; i <= 500; ++ i)
+    q.push({0, seed_id});
+    while (q.size()) 
     {
-        vector<vid_t> v;
-        while (q.size())
+        auto [cd, c_id] = q.front();      q.pop();
+        if (cd > dist[c_id])              continue;
+        all_v.insert(c_id);
+        // if (all_v.size() > num_vertices / 1000)          goto final_check;
+        if (dist[c_id] >= MAX_DIST)                 continue;
+        // if (bfs_src.count(c_id))            return false;
+
+        for (auto &i : adj_out[c_id])
         {
-            vid_t top_id = q.front();  q.pop();
-
-            if (vis[top_id])   continue;
-            vis[top_id] = true;
-            all_v.insert(top_id);
-
-            for (auto &i : adj_out[top_id])
-            {
-                vid_t to_id = edges[i.v].second;
-                if (vis[to_id])             continue;
-                if (degrees[to_id] > degree_threshold)     continue;
-
-                all_v.insert(to_id);
-                v.push_back(to_id);
+            vid_t to_id = edges[i.v].second;
+            if (cd <= 3 && degrees[to_id] > 17)                                continue;
+            if (cd > 3 && degrees[to_id] > MAX_DEG || degrees[to_id] < MIN_DEG)      continue;
+            if (dist[to_id] > dist[c_id] + 1) {
+                dist[to_id] = dist[c_id] + 1;
+                q.push({dist[to_id], to_id});
             }
         }
-        for (auto vid : v)  q.push(vid);
     }
-    
-    // for (auto vid : bfs_src)    cout << vid << ' '; cout << endl;
-    // cout << seed_id + 1 << endl;
-    // for (auto vid : all_v)      cout << vid << ' '; cout << endl;
-    for (auto vid : bfs_src)    
-        if (all_v.count(vid))   
-            return false;
-    return true;
+
+    final_check: 
+        // if (all_v.size() < 17)     return false;
+        // LOG(INFO) << "Size of all_vertex in dist " << MAX_DIST << " is: " << all_v.size() << endl;
+        for (auto vid : bfs_src)    
+            if (all_v.count(vid))   
+                return false;
+        return true;
 }
 void TagPartitioner::random_tag(size_t random_cnt)
 {
-    // bfs_src = new int[random_cnt + 1];
     // ull tag_cnt[FLAGS_p + 1];
+    Timer seed_timer;
+    seed_timer.start();
 
     global_tag_distribute[0] = 1e18;
     while (bfs_src.size() < random_cnt)
@@ -154,7 +153,7 @@ void TagPartitioner::random_tag(size_t random_cnt)
 
         int tag = gen() % p + 1;
         vertex2tag[vertex_id].set(tag, 1);
-        bfs_src.push_back(vertex_id);
+        bfs_src.insert(vertex_id);
         // tag_cnt[tag] ++;
 
         ++ global_tag_distribute[tag];
@@ -162,21 +161,23 @@ void TagPartitioner::random_tag(size_t random_cnt)
 
     // for (int i = 1; i <= random_cnt; ++ i)
     //     LOG(bfs_src[i]);
+    seed_timer.stop();
+    LOG(INFO) << "time used for seed generation: " << seed_timer.get_time();
 }
 
 void 
 TagPartitioner::bfs_walk(size_t random_cnt)
 {
     size_t all2 = 0, degree_1_vertex_cnt = 0;
-    // vector<size_t> curr_vertex_neighbor_tag_cnt(p + 1);
-    size_t* curr_vertex_neighbor_tag_cnt = new size_t[p + 1];
-    const vid_t threshold = round((double)num_vertices / p * 5);
+    // const vid_t threshold = round((double)num_vertices / p * 10);
+    threshold = num_vertices / p * 2;
     LOG(INFO) << "threshold " << threshold;
-    vector<bool> tag_valid(p + 5, true);
+    tag_valid = vector<bool>(p + 5, true);
 
+    vector<vid_t> degree_1_vertex;
     for (vid_t u = 0; u < num_vertices; ++ u)   
-        if (degrees[u] == 1) 
-            ++ degree_1_vertex_cnt;
+        if (degrees[u] == 1)        degree_1_vertex.push_back(u);
+    degree_1_vertex_cnt = degree_1_vertex.size();
     LOG(INFO) << "degree_1_vertex_cnt " << degree_1_vertex_cnt;
 
     queue<vid_t> q;
@@ -185,7 +186,7 @@ TagPartitioner::bfs_walk(size_t random_cnt)
 
     vid_t covered_cnt = 0;
     vector<vid_t> next_round_vertex;
-    vector<bool> st(num_edges, false);
+    edge_covered = vector<bool>(num_edges, false);
 
     // for (int round = 1; round <= 20; ++ round)
     for (int round = 1; ; ++ round)
@@ -221,105 +222,42 @@ TagPartitioner::bfs_walk(size_t random_cnt)
             if (vis[top_id])    continue;
             vis[top_id] = 1;
 
-            // LOG(INFO) << "top_id " << top_id;
-
             // current vertex cannot cover neighbors yet
             if (!can_cover[top_id] && degrees[top_id] > 1)
             {
-                // fill (all(curr_vertex_neighbor_tag_cnt), 0);
-                memset(curr_vertex_neighbor_tag_cnt, 0, sizeof(size_t) * (p + 1));
+                int candidate_tag = choose_tag(top_id);
+                if (candidate_tag == 0)     exit(0);
 
-                for (auto &i : adj_out[top_id])
-                {
-                    if (st[i.v])            continue;
-                    // if (!edges[i.v].valid())      continue;
-
-                    vid_t to_id = edges[i.v].second;
-                    const auto & v2t = vertex2tag[to_id];
-                    if (!v2t.empty())
-                    {
-                        for (int b = 1; b <= p; ++ b)
-                            if (v2t.get(b) == 1)
-                                ++ curr_vertex_neighbor_tag_cnt[b];
-                    }
-                }
+                if (vertex2tag[top_id].get(candidate_tag) != 1) 
+                    assign_tag(top_id, candidate_tag);
                 
-                // for (int i = 0; i <= p; ++ i) printf("%d, ", curr_vertex_neighbor_tag_cnt[i]); puts("");
-
-                // choose a tag for current vertex
-                // vid_t max_tag_cnt = *max_element(curr_vertex_neighbor_tag_cnt.begin() + 1, curr_vertex_neighbor_tag_cnt.end());
-                vid_t max_tag_cnt = *max_element(curr_vertex_neighbor_tag_cnt + 1, curr_vertex_neighbor_tag_cnt + 1 + FLAGS_p);
-                // LOG(max_tag_cnt);
-
-                vid_t candidate_tag_cnt = 0;
-                int candidate_tag = 0;
-                for (int b = 1; b <= p; ++ b) if (tag_valid[b])
-                {
-                    if (curr_vertex_neighbor_tag_cnt[b] == max_tag_cnt)
-                    {
-                        if (global_tag_distribute[b] < global_tag_distribute[candidate_tag])
-                        {
-                            candidate_tag = b;
-                            candidate_tag_cnt = curr_vertex_neighbor_tag_cnt[b];
-                        }
-                    }
-                }
-
-                if (candidate_tag > p || candidate_tag < 1)[[BOOST_UNLIKELY]]
-                {
-                    // LOG(top_id);
-                }
-                else
-                {
-                    if (vertex2tag[top_id].get(candidate_tag) != 1)
-                    {
-                        ++ global_tag_distribute[candidate_tag];
-                        if (global_tag_distribute[candidate_tag] >= threshold)  
-                            tag_valid[candidate_tag] = false;
-                        vertex2tag[top_id].set_bit(candidate_tag);
-                    }
-                }
-                
-                // update neighbor's st[] 
+                // update neighbor's edge_covered[] 
                 bool all_neighbor_covered = true;
                 int neighbor_uncovered_cnt = 0;
 
                 for (auto &i : adj_out[top_id])
                 {
-                    // if (!edges[i.v].valid())      continue;
-                    if (st[i.v])      continue;
+                    if (edge_covered[i.v])      continue;
 
                     vid_t to_id = edges[i.v].second;
                     if (degrees[to_id] == 1)    
                     {
-                        st[i.v] = 1;
-                        // edges[i.v].remove();
+                        edge_covered[i.v] = 1;
                         continue;
                     }
 
                     all_neighbor_covered = false;
                     ++ neighbor_uncovered_cnt;
 
-                    if (vertex2tag[to_id].get(candidate_tag))
-                    {
-                        st[i.v] = 1;
-                        // edges[i.v].remove();
-                        // continue;
+                    if (vertex2tag[to_id].get(candidate_tag)) {
+                        edge_covered[i.v] = 1;
                     }
                 }
                 
-
-                if (all_neighbor_covered)   
-                {
+                if (all_neighbor_covered) 
                     ++ covered_cnt, can_cover[top_id] = 1;
-                }
                 else
-                {
-                    // if (neighbor_uncovered_cnt == 1)    
-                    //     LOG(top_id);
                     next_round_vertex.push_back(top_id);
-                }
-
             }
             
             for (auto &i : adj_out[top_id])
@@ -328,8 +266,55 @@ TagPartitioner::bfs_walk(size_t random_cnt)
                 if (vis[to_id]) continue;
                 q.push(to_id);
             }
-            
         }
     }
 
+    for (auto u : degree_1_vertex) {
+        int candidate_tag = choose_tag(u);
+        assign_tag(u, candidate_tag);
+    }
+}
+
+int
+TagPartitioner::choose_tag(vid_t uid)
+{
+    vector<vid_t> curr_vertex_neighbor_tag_cnt(p + 1, 0);
+
+    for (auto &i : adj_out[uid])
+    {
+        if (edge_covered[i.v])            continue;
+
+        vid_t to_id = edges[i.v].second;
+        const auto & v2t = vertex2tag[to_id];
+        if (!v2t.empty())
+        {
+            for (int b = 1; b <= p; ++ b)
+                if (v2t.get(b) == 1)
+                    ++ curr_vertex_neighbor_tag_cnt[b];
+        }
+    }
+    
+    // choose a tag for current vertex
+    int max_tag = max_element(curr_vertex_neighbor_tag_cnt.begin() + 1, curr_vertex_neighbor_tag_cnt.end()) - curr_vertex_neighbor_tag_cnt.begin();
+    vid_t max_tag_cnt = curr_vertex_neighbor_tag_cnt[max_tag];
+
+    int candidate_tag = max_tag;
+    for (int b = 1; b <= p; ++ b) if (tag_valid[b]) {
+        if (curr_vertex_neighbor_tag_cnt[b] == max_tag_cnt)
+        {
+            if (global_tag_distribute[b] < global_tag_distribute[candidate_tag]) {
+                candidate_tag = b;
+            }
+        }
+    }
+    return candidate_tag;
+}
+
+void 
+TagPartitioner::assign_tag(vid_t uid, int candidate_tag)
+{
+    ++ global_tag_distribute[candidate_tag];
+    if (global_tag_distribute[candidate_tag] >= threshold)  
+        tag_valid[candidate_tag] = false;
+    vertex2tag[uid].set_bit(candidate_tag);
 }
