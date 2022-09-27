@@ -72,8 +72,8 @@ TagPartitioner::TagPartitioner(std::string basefilename)
     int sum_d = 0;      for (auto deg : degrees)    sum_d += deg;
     cout << (double) sum_d / num_vertices << endl;
 
-    random_tag(p * 50);
-    bfs_walk(p * 50);
+    random_tag(num_vertices * p / 5000);
+    bfs_walk(num_vertices * p / 5000);
 
     int all2 = 0;
     for (int i = 1; i <= p; ++ i)
@@ -95,20 +95,20 @@ void TagPartitioner::split()
 }
 bool TagPartitioner::seed_check(vid_t seed_id)
 {
-    if (degrees[seed_id] > 15)             return false;
+    const int degree_threshold = 6;
+    if (degrees[seed_id] > degree_threshold)             return false;
     vector<bool> vis(num_vertices);
     unordered_set<vid_t> all_v;
     queue<vid_t> q;
 
     q.push(seed_id);
 
-    for (int i = 1; i <= 20; ++ i)
+    for (int i = 1; i <= 500; ++ i)
     {
         vector<vid_t> v;
         while (q.size())
         {
-            vid_t top_id = q.front();  
-            q.pop();
+            vid_t top_id = q.front();  q.pop();
 
             if (vis[top_id])   continue;
             vis[top_id] = true;
@@ -118,7 +118,7 @@ bool TagPartitioner::seed_check(vid_t seed_id)
             {
                 vid_t to_id = edges[i.v].second;
                 if (vis[to_id])             continue;
-                if (degrees[to_id] > 15)     continue;
+                if (degrees[to_id] > degree_threshold)     continue;
 
                 all_v.insert(to_id);
                 v.push_back(to_id);
@@ -216,8 +216,7 @@ TagPartitioner::bfs_walk(size_t random_cnt)
 
         while (q.size())
         {
-            vid_t top_id = q.front();  
-            q.pop();
+            vid_t top_id = q.front();  q.pop();
 
             if (vis[top_id])    continue;
             vis[top_id] = 1;
@@ -323,7 +322,6 @@ TagPartitioner::bfs_walk(size_t random_cnt)
 
             }
             
-
             for (auto &i : adj_out[top_id])
             {
                 vid_t to_id = edges[i.v].second;
