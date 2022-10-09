@@ -39,6 +39,9 @@ private:
     std::vector<bool> edge_covered;
     std::vector<bool> tag_valid;
 
+    std::vector<std::unordered_set<vid_t>> bucket;
+
+
     std::random_device rd;
     std::mt19937 gen;
 
@@ -49,6 +52,7 @@ private:
     bool seed_check(vid_t uid);
     int choose_tag(vid_t uid);
     void assign_tag(vid_t uid, int candidate_tag);
+    void union_tag();
 
 public:
     TagPartitioner(std::string basefilename);

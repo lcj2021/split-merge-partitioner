@@ -38,6 +38,8 @@ TagPartitioner::TagPartitioner(std::string basefilename)
     global_tag_distribute.assign(p + 1, 0);
     vertex2tag.assign(num_vertices + 1, dense_bitset(p + 1));
     can_cover.assign(num_vertices + 1, false);
+    tag_valid.assign(p + 1, false);
+    bucket.resize(p + 1);
 
     Timer read_timer;
     read_timer.start();
@@ -80,6 +82,7 @@ TagPartitioner::TagPartitioner(std::string basefilename)
         cout << i << " : " << global_tag_distribute[i] << endl, all2 += global_tag_distribute[i];
     cout << "VERTEX_CNT : " << num_vertices << endl;
     cout << "ALL_TAG_CNT : " << all2 << endl;
+    union_tag();
 }
 
 void TagPartitioner::split()
@@ -93,6 +96,7 @@ void TagPartitioner::split()
     compute_timer.start();
     
 }
+
 bool TagPartitioner::seed_check(vid_t seed_id)
 {
     const int MAX_DEG = 17 / 2, MIN_DEG = 3, INF = num_vertices, MAX_DIST = 15;
@@ -117,7 +121,7 @@ bool TagPartitioner::seed_check(vid_t seed_id)
         {
             vid_t to_id = edges[i.v].second;
             if (cd <= 3 && degrees[to_id] > 17)                                continue;
-            if (cd > 3 && degrees[to_id] > MAX_DEG || degrees[to_id] < MIN_DEG)      continue;
+            if (cd > 3 && (degrees[to_id] > MAX_DEG || degrees[to_id] < MIN_DEG))      continue;
             if (dist[to_id] > dist[c_id] + 1) {
                 dist[to_id] = dist[c_id] + 1;
                 q.push({dist[to_id], to_id});
@@ -135,7 +139,6 @@ bool TagPartitioner::seed_check(vid_t seed_id)
 }
 void TagPartitioner::random_tag(size_t random_cnt)
 {
-    // ull tag_cnt[FLAGS_p + 1];
     Timer seed_timer;
     seed_timer.start();
 
@@ -149,18 +152,16 @@ void TagPartitioner::random_tag(size_t random_cnt)
 
         if (!seed_check(vertex_id))                                         continue;
 
-        LOG(INFO) << "vertex " << vertex;
+        // LOG(INFO) << "vertex " << vertex;
 
-        int tag = gen() % p + 1;
-        vertex2tag[vertex_id].set(tag, 1);
+        int tag = bfs_src.size() % p + 1;
         bfs_src.insert(vertex_id);
-        // tag_cnt[tag] ++;
-
-        ++ global_tag_distribute[tag];
+        assign_tag(vertex_id, tag);
     }
 
     // for (int i = 1; i <= random_cnt; ++ i)
     //     LOG(bfs_src[i]);
+    union_tag();
     seed_timer.stop();
     LOG(INFO) << "time used for seed generation: " << seed_timer.get_time();
 }
@@ -275,7 +276,7 @@ TagPartitioner::bfs_walk(size_t random_cnt)
     }
 }
 
-int
+inline int
 TagPartitioner::choose_tag(vid_t uid)
 {
     vector<vid_t> curr_vertex_neighbor_tag_cnt(p + 1, 0);
@@ -310,11 +311,52 @@ TagPartitioner::choose_tag(vid_t uid)
     return candidate_tag;
 }
 
-void 
+inline void 
 TagPartitioner::assign_tag(vid_t uid, int candidate_tag)
 {
-    ++ global_tag_distribute[candidate_tag];
-    if (global_tag_distribute[candidate_tag] >= threshold)  
+    if (++ global_tag_distribute[candidate_tag] >= threshold)  
         tag_valid[candidate_tag] = false;
     vertex2tag[uid].set_bit(candidate_tag);
+    bucket[candidate_tag].insert(uid);
+}
+
+void 
+TagPartitioner::union_tag()
+{   
+    vector<array<vid_t, 2>> v;
+    for (int b = 1; b <= p; ++ b) {
+        v.push_back({vid_t(bucket[b].size()), vid_t(b)});
+    }
+
+    sort(all(v));
+    reverse(all(v));
+
+    // [tag_size, tag]
+    priority_queue<array<vid_t, 2>, vector<array<vid_t, 2>>, greater<array<vid_t, 2>>> pq;  
+
+    for (int b = 0; b < p / 2; ++ b) {
+        pq.push({ v[b][0], v[b][1] });
+    }
+
+    vector<int> new_tag(p + 1);
+    for (int b = p / 2 + 1; b < p; ++ b) {          // b -> a
+        auto [tag_size_b, tag_b] = v[b];
+        auto [tag_size_a, tag_a] = pq.top();
+        pq.pop();
+
+        for (const auto& uid : bucket[tag_b])
+            bucket[tag_a].insert(uid);
+        new_tag[tag_b] = tag_a;
+
+        pq.push({vid_t(bucket[tag_a].size()), vid_t(tag_a)});
+    }
+
+    int tag_sum = 0;
+    for (int i = 1; i <= p / 2; ++ i) {
+        auto [tag_size, tag] = pq.top();    
+        cout << tag_size << ' ' << tag << endl;
+        tag_sum += tag_size;
+        pq.pop();
+    }
+    cout << (double)tag_sum / num_vertices << endl;
 }
