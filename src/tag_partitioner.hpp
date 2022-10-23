@@ -58,6 +58,7 @@ private:
     void bfs_walk(size_t random_cnt);
     bool seed_check(vid_t uid);
     int choose_tag(vid_t uid);
+    int choose_tag(vid_t uid, bool debug);
     void assign_tag(vid_t uid, int candidate_tag);
     void union_tag();
 
@@ -94,10 +95,9 @@ private:
             bool n_covered = false;
             if (degrees[nid] == 1) {
                 n_covered = true;
-                edge_covered[i.v] = edge_covered[opposite(i.v)] = true;
                 continue;
             }
-            for (int b = 1; b <= p; ++ b) {
+            for (int b = 0; b < p; ++ b) {
                 if (vertex2tag[nid].get(b) == 1 && vertex2tag[vid].get(b) == 1) {
                     n_covered = true;
                     edge_covered[i.v] = edge_covered[opposite(i.v)] = true;
@@ -114,8 +114,8 @@ private:
         for (size_t eid = 0; eid < num_edges / 2; ++ eid) {
             bool covered = false;
             vid_t u = edges[eid].first, v = edges[eid].second;
-            for (int b = 1; b <= p; ++ b) {
-                if (vertex2tag[u].get(b) && vertex2tag[v].get(b)) {
+            for (int b = 0; b < p; ++ b) {
+                if (vertex2tag[u].get(b) == 1 && vertex2tag[v].get(b) == 1) {
                     covered = true;
                     break;
                 }
