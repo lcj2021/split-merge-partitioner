@@ -6,7 +6,6 @@ using namespace std;
 #define endl "\n"
 #define all(x) x.begin(), x.end()
 typedef unsigned long long ull;
-// const ull N = 1e7 + 10, M = 3e8 + 10;
 
 DEFINE_string(filetype, "edgelist",
               "the type of input file (supports 'edgelist' and 'adjlist')");
@@ -34,6 +33,8 @@ int main(int argc, char *argv[])
 
     timer.stop();
     LOG(INFO) << "Total time used " << timer.get_time();
+    ofstream data = ofstream("1_2", ios::app);
+    data << "Total time used " << timer.get_time() << endl << endl;
     
     return 0;
 }

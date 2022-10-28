@@ -16,8 +16,9 @@ endif()
 
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Release" "Debug")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -std=c++11 -pthread -fopenmp")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_EXE_LINK_FLAGS_RELEASE} -Ofast -DNDEBUG")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -std=c++17 -pthread -fopenmp")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_EXE_LINK_FLAGS_RELEASE} -Ofast ")
+# -DNDEBUG
 
 add_subdirectory(threadpool11)
 include_directories(./threadpool11/include)
