@@ -21,7 +21,7 @@ class TagPartitioner : public Partitioner
 {
 private:
     /* data */
-    const double BALANCE_RATIO = 1.00;
+    const double BALANCE_RATIO = 1.25;
     std::string basefilename;
 
     vid_t num_vertices;

@@ -94,6 +94,7 @@ TagPartitioner::TagPartitioner(std::string basefilename)
             }
         }
     LOG(INFO) << "cnt = " << cnt << endl;
+    data << "cnt = " << cnt << endl;
     LOG(INFO) << "c1 = " << c1 << endl;
     
     size_t all2 = accumulate(all(global_tag_distribute), 0);
@@ -173,7 +174,7 @@ void TagPartitioner::random_tag(size_t seed_cnt)
 
     seeded.assign(num_vertices, false);
 
-    capacity = (double)(num_vertices - degree_1_vertex.size()) / p / 3 + 1;
+    capacity = (double)(num_vertices - degree_1_vertex.size()) / p / 3.0 + 1;
     vector<queue<vid_t>> q(p);
 
     // vector<array<vid_t, 2>> d_v(num_vertices);
@@ -193,11 +194,9 @@ void TagPartitioner::random_tag(size_t seed_cnt)
         while (global_tag_distribute[b] < capacity) {
             vid_t vid;
             if (!q[b].size()) {
-                if (!get_free_vertex(vid, 6)) {
-                    DLOG(INFO) << "partition " << b
+                while (!get_free_vertex(vid, 6));
+                LOG(INFO) << "partition " << b
                                << " stop: no free vertices";
-                    break;
-                }
             } else {
                 vid = q[b].front();    q[b].pop();
             }
@@ -228,7 +227,7 @@ TagPartitioner::bfs_walk(size_t seed_cnt)
 {
     size_t degree_1_vertex_cnt = 0;
     LOG(INFO) << "threshold " << threshold;
-    tag_valid = vector<bool>(p, true);
+    tag_valid.assign(p, true);
 
     degree_1_vertex_cnt = degree_1_vertex.size();
     LOG(INFO) << "degree_1_vertex_cnt " << degree_1_vertex_cnt;
@@ -260,6 +259,9 @@ TagPartitioner::bfs_walk(size_t seed_cnt)
 
         for (auto vid : next_round_vertex)  curr_round_vertex.push_back(vid);
         // shuffle(all(curr_round_vertex), gen);
+        // sort(all(curr_round_vertex), [&](vid_t u, vid_t v) {
+        //     return degrees[u] > degrees[v];
+        // });
         next_round_vertex.clear();
 
         for (auto vid : curr_round_vertex) {
@@ -269,8 +271,13 @@ TagPartitioner::bfs_walk(size_t seed_cnt)
                     continue;
                 }
                 int candidate_tag = choose_tag(vid, true, true);
-                assert(candidate_tag >= 0 && candidate_tag < p && "Candidate_tag out of range!");
-                assign_tag(vid, candidate_tag, true);
+                // assert(candidate_tag >= 0 && candidate_tag < p && "Candidate_tag out of range!");
+                if (candidate_tag >= p) {
+                    assign_tag(vid, candidate_tag, true);
+                    assign_tag(vid, candidate_tag, true);
+                }
+                else
+                    assign_tag(vid, candidate_tag, true);
                 
                 // update neighbor's edge_covered[]
                 bool neighbor_covered = all_neighbor_covered(vid);
@@ -511,7 +518,7 @@ TagPartitioner::choose_tag(vid_t uid, bool restrict, bool debug)
     }
     if (candidate_tag < 0 || candidate_tag >= p) {
         for (auto [tag_c, tag] : neighbor_tag_cnt) {
-            cerr << tag_c << ' ' << tag << " valid? " << tag_valid[tag] << endl;
+            cerr << tag_c << ' ' << tag << " valid? " << tag_valid[tag] << " has? " << vertex2tag[uid].get(tag) << endl;
         }
         cerr << "Candidate tag: " << candidate_tag << endl;
         exit(0);
