@@ -174,7 +174,7 @@ void TagPartitioner::random_tag(size_t seed_cnt)
 
     seeded.assign(num_vertices, false);
 
-    capacity = (double)(num_vertices - degree_1_vertex.size()) / p / 3.0 + 1;
+    capacity = (double)(num_vertices - degree_1_vertex.size()) / p / 5.0 + 1;
     vector<queue<vid_t>> q(p);
 
     // vector<array<vid_t, 2>> d_v(num_vertices);
