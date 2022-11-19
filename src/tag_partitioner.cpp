@@ -1,5 +1,7 @@
 #include "tag_partitioner.hpp"
 #include "conversions.hpp"
+#include "kcore.hpp"
+#include "dsu.hpp"
 using namespace std;
 #define all(x) x.begin(), x.end()
 #define rall(x) x.rbegin(), x.rend()
@@ -68,7 +70,7 @@ TagPartitioner::TagPartitioner(std::string basefilename)
 
     int sum_d = 0;      for (auto deg : degrees)    sum_d += deg;
     LOG(INFO) << (double) sum_d / num_vertices << endl;
-    data = ofstream("1_2", ios::app);
+    data = ofstream("EXP_LOG.txt", ios::app);
 
     random_tag(p);
     bfs_walk(p);
@@ -112,7 +114,27 @@ TagPartitioner::TagPartitioner(std::string basefilename)
     data << "RF : " << (double) all2 / num_vertices << endl;
     data << "BALANCE : " << (double)max_occupied / ((double)num_edges / 2 / p) << endl;
 
-    union_tag();
+    // union_tag();
+
+    vid_t mirror = 0, cut_vertex = 0;
+    map<vid_t, vid_t> deg_cnt;
+    for (vid_t vid = 0; vid < num_vertices; ++ vid) {
+        int cnt = 0;
+        for (int b = 0; b < p; ++ b) {
+            cnt += vertex2tag[vid].get(b);
+        }
+        if (cnt > 1) {
+            deg_cnt[degrees[vid]] ++;
+            mirror += cnt - 1;
+            cut_vertex ++;
+        }
+    }
+    ofstream out(basefilename + ".tag.cut", ios::out);
+    out << "Mirror: " << mirror << endl;
+    out << "Cut_vertex " << cut_vertex << endl;
+    for (auto [deg, cnt] : deg_cnt) {
+        out << deg << '\t' << cnt << endl;
+    }
 }
 
 void TagPartitioner::split()
@@ -173,41 +195,30 @@ void TagPartitioner::random_tag(size_t seed_cnt)
     for (int b = 0; b < num_vertices % p; ++ b)    tag_size[b] ++;
 
     seeded.assign(num_vertices, false);
+    capacity = (double)(num_vertices - degree_1_vertex.size()) / p / 2.0 + 1;
 
-    capacity = (double)(num_vertices - degree_1_vertex.size()) / p / 5.0 + 1;
     vector<queue<vid_t>> q(p);
-
-    // vector<array<vid_t, 2>> d_v(num_vertices);
-    // for (vid_t vid = 0; vid < num_vertices; ++ vid) {
-    //     d_v[vid] = {degrees[vid], vid};
-    // }
-    // sort(rall(d_v));
-    // for (int b = 0; b < p - 1; ++ b) {
-    //     for (int c = 0; c < 100; ++ c) {
-    //         vid_t vid = d_v[b + (p - 1) * c][1];
-    //         q[b].push(vid);
-    //     }
-    // }
-
     for (int b = 0; b < p - 1; ++ b) {
         cerr << b << endl;
         while (global_tag_distribute[b] < capacity) {
             vid_t vid;
             if (!q[b].size()) {
-                while (!get_free_vertex(vid, 6));
+                while (!get_free_vertex(vid));
                 LOG(INFO) << "partition " << b
                                << " stop: no free vertices";
             } else {
                 vid = q[b].front();    q[b].pop();
             }
 
-            if (seeded[vid])          continue;
+            if (seeded[vid])            continue;
             if (degrees[vid] == 1)      continue;
             seeded[vid] = true;
             assign_tag(vid, b, true);
             for (auto &i : adj_out[vid]) {
                 vid_t nid = edges[i.v].second;
-                if (seeded[nid])  continue;
+                if (seeded[nid])        continue;
+                if (adj_out[nid].size() >
+                    2 * average_degree) continue;
                 q[b].push(nid);
             }
         }
@@ -217,6 +228,30 @@ void TagPartitioner::random_tag(size_t seed_cnt)
         assign_tag(vid, p - 1, true);
         ++ cnt;
     }
+
+    // kcore_t kcore(num_vertices);
+    // LOG(INFO) << edges.size();
+    // for (auto [u, v] : edges) {
+    //     kcore.AddEdge(u, v);
+    // }
+    // unordered_set<int> kcore_s = kcore.solve(2 * average_degree);
+    // ofstream out("kcore.txt", ios::app);
+    // out << "\n\n\n\n";
+    // out << kcore_s.size() << '\n';
+
+    // DSU dsu(num_vertices);
+    // for (auto u : kcore_s) {
+    //     for (auto &i : adj_out[u]) {
+    //         int v = edges[i.v].second;
+    //         if (!kcore_s.count(v)) continue;
+    //         dsu.merge(u, v);
+    //     }
+    // }
+    // for (auto u : kcore_s) {
+    //     if (u == dsu.find(u)) {
+    //         out << u << ' ' << dsu.size(u) << '\n';
+    //     }
+    // }
 
     seed_timer.stop();
     LOG(INFO) << "time used for seed generation: " << seed_timer.get_time();

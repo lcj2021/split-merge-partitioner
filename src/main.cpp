@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 
     timer.stop();
     LOG(INFO) << "Total time used " << timer.get_time();
-    ofstream data = ofstream("1_2", ios::app);
+    ofstream data = ofstream("EXP_LOG.txt", ios::app);
     data << "Total time used " << timer.get_time() << endl << endl;
     
     return 0;
