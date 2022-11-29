@@ -1,11 +1,14 @@
+#pragma once
 #include <vector>
 #include <numeric>
+
 
 class DSU {
     private:
         std::vector<int> p, sz;
     public: 
         DSU(int n): p(n + 1), sz(n + 1, 1) {std::iota(p.begin(), p.end(), 0); }
+        DSU() {}
         int find(int x) {
             return p[x] == x ? p[x] : p[x] = find(p[x]);
         }

@@ -16,6 +16,7 @@
 #include "dense_bitset.hpp"
 #include "graph.hpp"
 #include "edgepart.hpp"
+#include "dsu.hpp"
 
 class TagPartitioner : public Partitioner
 {
@@ -52,6 +53,10 @@ private:
     std::uniform_int_distribution<vid_t> dis;
 
     edgepart_writer<vid_t, uint16_t> writer;
+
+    DSU dsu;
+    int kcore_k;
+    std::unordered_set<int> kcore_s;
 
 
     void random_tag(size_t random_cnt);
@@ -92,6 +97,27 @@ private:
         }
         if (count == num_vertices)
             return false;
+        return true;
+    }
+
+    bool get_free_vertex_kcore(vid_t &vid)
+    {
+        if (!kcore_s.size()) {
+            vid = dis(gen);
+            vid_t count = 0;
+            while (count < num_vertices &&
+                (adj_out[vid].size() == 0 ||
+                    adj_out[vid].size() >
+                        2 * average_degree ||
+                    seeded[vid])) {
+                vid = (vid + ++count) % num_vertices;
+            }
+            if (count == num_vertices)
+                return false;
+            return true;
+        }
+        vid = *(kcore_s.begin());
+        kcore_s.erase(kcore_s.find(vid));
         return true;
     }
     
