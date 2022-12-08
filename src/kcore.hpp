@@ -95,7 +95,7 @@ unordered_set<int> kcore_t::solve( const int k )
     unordered_set<int> S;
     for ( int i = 0; i < num_vertices; ++i ) {
         if ( deg[i] < k ) continue;
-        outputFile << i << ' ' << deg[i] << '\n';
+        // outputFile << i << ' ' << deg[i] << '\n';
         S.insert(i);
     }
     outputFile.close();
