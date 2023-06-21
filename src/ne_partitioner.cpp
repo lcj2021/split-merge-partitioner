@@ -102,30 +102,48 @@ void NePartitioner::calculate_stats()
     rep (i, p) {
         bucket2vcnt[i] = is_boundarys[i].popcount();
     }
-    size_t max_part_vertice_cnt = *std::max_element(bucket2vcnt.begin(), bucket2vcnt.end()), 
-        all_part_vertice_cnt = accumulate(bucket2vcnt.begin(), bucket2vcnt.end(), (size_t)0);
-    size_t max_part_edge_cnt = *std::max_element(occupied.begin(), occupied.end()), 
-        all_part_edge_cnt = accumulate(occupied.begin(), occupied.end(), (size_t)0);
+    size_t max_part_vertice_cnt = *std::max_element(bucket2vcnt.begin(), bucket2vcnt.end());
+    size_t all_part_vertice_cnt = accumulate(bucket2vcnt.begin(), bucket2vcnt.end(), (size_t)0);
+    size_t max_part_edge_cnt = *std::max_element(occupied.begin(), occupied.end());
+    size_t all_part_edge_cnt = accumulate(occupied.begin(), occupied.end(), (size_t)0);
 
     rep(i, p)
         LOG(INFO) << "Partition " << i << " : " << bucket2vcnt[i] << " vertices " << std::endl;
     
-    double avg_vertice_cnt = (double)all_part_vertice_cnt / p;
-    double avg_edge_cnt = (double)all_part_edge_cnt / p;
-    double std_deviation = 0.0;
-    for (int b = 0; b < p; ++ b) 
-        std_deviation += pow(is_boundarys[b].popcount() - avg_vertice_cnt, 2);
-    std_deviation = sqrt((double)std_deviation / p);
+    double avg_vertice_cnt = (double)all_part_vertice_cnt / (p);
+    double avg_edge_cnt = (double)all_part_edge_cnt / (p);
+
+    double std_vertice_deviation = 0.0;
+    double std_edge_deviation = 0.0;
+    for (int b = 0; b < p; ++ b) {
+        std_vertice_deviation += pow(bucket2vcnt[b] - avg_vertice_cnt, 2);
+        std_edge_deviation += pow(occupied[b] - avg_edge_cnt, 2);
+    }
+    std_vertice_deviation = sqrt((double)std_vertice_deviation / p);
+    std_edge_deviation = sqrt((double)std_edge_deviation / p);
     
-    LOG(INFO) << "Vertice balance: "
-              << (double)max_part_vertice_cnt / ((double)num_vertices / p);
+        LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
+    LOG(INFO) << "Max vertice count / avg vertice count: "
+              << (double)max_part_vertice_cnt / ((double)num_vertices / (p));
     LOG(INFO) << "Max Vertice count: "
               << max_part_vertice_cnt;
-    LOG(INFO) << "Vertice std_deviation / avg: "
-              << std_deviation / avg_vertice_cnt;
-    LOG(INFO) << "Edge balance: "
+    LOG(INFO) << "Avg Vertice count(No replicate): "
+              << num_vertices / p;
+    LOG(INFO) << "Vertice std_vertice_deviation / avg: "
+              << std_vertice_deviation / avg_vertice_cnt;
+
+    LOG(INFO) << std::string(20, '#') << "\tEdge       balance\t" << std::string(20, '#');
+    LOG(INFO) << "Max edge count / avg edge count: "
               << (double)max_part_edge_cnt / avg_edge_cnt;
+    LOG(INFO) << "Max Edge count: "
+              << max_part_edge_cnt;
+    LOG(INFO) << "Avg Edge count: "
+              << avg_edge_cnt;
+    LOG(INFO) << "Edge std_edge_deviation / avg: "
+              << std_edge_deviation / avg_edge_cnt;
+
     CHECK_EQ(all_part_edge_cnt, num_edges);
+    LOG(INFO) << std::string(20, '#') << "\tReplicate    factor\t" << std::string(20, '#');
     LOG(INFO) << "replication factor (final): " << (double)all_part_vertice_cnt / num_vertices;
 }
 

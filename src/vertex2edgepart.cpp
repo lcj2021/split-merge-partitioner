@@ -284,10 +284,11 @@ Vertex2EdgePart::split() {
                 // is_boundarys[target_p].set_bit_unsync(from);
                 // is_boundarys[target_p].set_bit_unsync(to);
 
-                if (uv2edgeid.count(std::tuple(from, to))) {
-                    LOG(FATAL) << "edge dulplicate!\n";
-                }
-                uv2edgeid[{from, to}] = curr_edge_cnt;
+                // if (uv2edgeid.count(std::tuple(from, to))) {
+                //     LOG(FATAL) << "edge dulplicate!\n";
+                // }
+                // uv2edgeid[{from, to}] = curr_edge_cnt;
+                edges.emplace_back(edge_t(from, to));
                 int part_u = vertex2partition[from];
                 int part_v = vertex2partition[to];
 
@@ -304,9 +305,9 @@ Vertex2EdgePart::split() {
     merge();
     CHECK_EQ(assigned_vertices, num_vertices);
 
-    LOG(INFO) << uv2edgeid.size() << ' ' << curr_edge_cnt;
-    for (auto edge : uv2edgeid) {
-        vid_t from = std::get<0>(edge.first), to = std::get<1>(edge.first);
+    LOG(INFO) << edges.size() << ' ' << curr_edge_cnt;
+    for (auto edge : edges) {
+        vid_t from = edge.first, to = edge.second;
         int target_p = findEdgePartition(from, to);
         occupied[target_p]++;
         is_boundarys[target_p].set_bit_unsync(from);
@@ -324,10 +325,11 @@ Vertex2EdgePart::calculate_stats()
     rep (i, p) {
         bucket2vcnt[i] = is_boundarys[i].popcount();
     }
-    size_t max_part_vertice_cnt = *std::max_element(bucket2vcnt.begin(), bucket2vcnt.end()), 
-        all_part_vertice_cnt = accumulate(bucket2vcnt.begin(), bucket2vcnt.end(), (size_t)0);
-    size_t max_part_edge_cnt = *std::max_element(occupied.begin(), occupied.end()), 
-        all_part_edge_cnt = accumulate(occupied.begin(), occupied.end(), (size_t)0);
+
+    size_t max_part_vertice_cnt = *std::max_element(bucket2vcnt.begin(), bucket2vcnt.end());
+    size_t all_part_vertice_cnt = accumulate(bucket2vcnt.begin(), bucket2vcnt.end(), (size_t)0);
+    size_t max_part_edge_cnt = *std::max_element(occupied.begin(), occupied.end());
+    size_t all_part_edge_cnt = accumulate(occupied.begin(), occupied.end(), (size_t)0);
 
     rep(i, p)
         LOG(INFO) << "Partition id: " << i
@@ -336,19 +338,37 @@ Vertex2EdgePart::calculate_stats()
     
     double avg_vertice_cnt = (double)all_part_vertice_cnt / (p);
     double avg_edge_cnt = (double)all_part_edge_cnt / (p);
-    double std_deviation = 0.0;
-    for (int b = 0; b < p; ++ b) 
-        std_deviation += pow(is_boundarys[b].popcount() - avg_vertice_cnt, 2);
-    std_deviation = sqrt((double)std_deviation / p);
+
+    double std_vertice_deviation = 0.0;
+    double std_edge_deviation = 0.0;
+    for (int b = 0; b < p; ++ b) {
+        std_vertice_deviation += pow(bucket2vcnt[b] - avg_vertice_cnt, 2);
+        std_edge_deviation += pow(occupied[b] - avg_edge_cnt, 2);
+    }
+    std_vertice_deviation = sqrt((double)std_vertice_deviation / p);
+    std_edge_deviation = sqrt((double)std_edge_deviation / p);
     
-    LOG(INFO) << "Vertice balance: "
+        LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
+    LOG(INFO) << "Max vertice count / avg vertice count: "
               << (double)max_part_vertice_cnt / ((double)num_vertices / (p));
     LOG(INFO) << "Max Vertice count: "
               << max_part_vertice_cnt;
-    LOG(INFO) << "Vertice std_deviation / avg: "
-              << std_deviation / avg_vertice_cnt;
-    LOG(INFO) << "Edge balance: "
+    LOG(INFO) << "Avg Vertice count(No replicate): "
+              << num_vertices / p;
+    LOG(INFO) << "Vertice std_vertice_deviation / avg: "
+              << std_vertice_deviation / avg_vertice_cnt;
+
+    LOG(INFO) << std::string(20, '#') << "\tEdge       balance\t" << std::string(20, '#');
+    LOG(INFO) << "Max edge count / avg edge count: "
               << (double)max_part_edge_cnt / avg_edge_cnt;
+    LOG(INFO) << "Max Edge count: "
+              << max_part_edge_cnt;
+    LOG(INFO) << "Avg Edge count: "
+              << avg_edge_cnt;
+    LOG(INFO) << "Edge std_edge_deviation / avg: "
+              << std_edge_deviation / avg_edge_cnt;
+
     CHECK_EQ(all_part_edge_cnt, num_edges);
+    LOG(INFO) << std::string(20, '#') << "\tReplicate    factor\t" << std::string(20, '#');
     LOG(INFO) << "replication factor (final): " << (double)all_part_vertice_cnt / num_vertices;
 }

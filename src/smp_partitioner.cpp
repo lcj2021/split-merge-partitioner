@@ -38,6 +38,7 @@ SmpPartitioner::SmpPartitioner(std::string basefilename)
     for (int i = 0; i < k * p; ++ i) bucket_info[i].old_id = i;
 
     edge2bucket.assign(num_edges, -1);
+    occupied.assign(p, 0);
     bucket_edge_cnt.assign(FLAGS_p, 0);
 };
 
@@ -198,6 +199,7 @@ std::unordered_map<int, int> SmpPartitioner::merge_by_overlap()
 void SmpPartitioner::calculate_stats()
 {
     std::cerr << std::string(25, '#') << " Calculating Statistics " << std::string(25, '#') << '\n';
+    std::vector<size_t> bucket2vcnt(p, 0);
     
     sort(bucket_info.begin(), bucket_info.end(), [&](const auto &l, const auto &r) {
         return l.old_id < r.old_id;
@@ -205,8 +207,10 @@ void SmpPartitioner::calculate_stats()
 
     size_t max_part_vertice_cnt = 0, all_part_vertice_cnt = 0; 
     size_t max_part_edge_cnt = 0, all_part_edge_cnt = 0; 
-    for (int b = 0; b < FLAGS_p; ++ b) {
+    for (int b = 0; b < p; ++ b) {
         bucket_info[b].replicas = bucket_info[b].is_mirror.popcount();
+        bucket2vcnt[b] = bucket_info[b].replicas;
+        occupied[b] = bucket_info[b].occupied;
         max_part_vertice_cnt = std::max(max_part_vertice_cnt, bucket_info[b].replicas);
         all_part_vertice_cnt += bucket_info[b].replicas;
         max_part_edge_cnt = std::max(max_part_edge_cnt, bucket_info[b].occupied);
@@ -214,27 +218,46 @@ void SmpPartitioner::calculate_stats()
         CHECK_EQ(bucket_info[b].occupied, bucket_edge_cnt[b]);
     }
 
-    for (int b = 0; b < FLAGS_p; ++ b) 
-        LOG(INFO) << "Bucket_info " << bucket_info[b].old_id << " vertices: " << bucket_info[b].replicas 
-                << " edges: " << bucket_info[b].occupied << " rank: " << b << std::endl;
+    for (int b = 0; b < p; ++ b) 
+        LOG(INFO) << "Bucket_info: " << bucket_info[b].old_id 
+                << ", vertices: " << bucket_info[b].replicas 
+                << ", edges: " << bucket_info[b].occupied 
+                << ", rank: " << b;
     
-    double avg_vertice_cnt = (double)all_part_vertice_cnt / FLAGS_p;
-    double avg_edge_cnt = (double)all_part_edge_cnt / FLAGS_p;
-    double std_deviation = 0.0;
-    for (int b = 0; b < FLAGS_p; ++ b) 
-        std_deviation += pow(bucket_info[b].replicas - avg_vertice_cnt, 2);
-    std_deviation = sqrt((double)std_deviation / FLAGS_p);
+    double avg_vertice_cnt = (double)all_part_vertice_cnt / (p);
+    double avg_edge_cnt = (double)all_part_edge_cnt / (p);
+
+    double std_vertice_deviation = 0.0;
+    double std_edge_deviation = 0.0;
+    for (int b = 0; b < p; ++ b) {
+        std_vertice_deviation += pow(bucket2vcnt[b] - avg_vertice_cnt, 2);
+        std_edge_deviation += pow(occupied[b] - avg_edge_cnt, 2);
+    }
+    std_vertice_deviation = sqrt((double)std_vertice_deviation / p);
+    std_edge_deviation = sqrt((double)std_edge_deviation / p);
     
-    LOG(INFO) << "Vertice balance: "
-              << (double)max_part_vertice_cnt / ((double)num_vertices / FLAGS_p);
+        LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
+    LOG(INFO) << "Max vertice count / avg vertice count: "
+              << (double)max_part_vertice_cnt / ((double)num_vertices / (p));
     LOG(INFO) << "Max Vertice count: "
               << max_part_vertice_cnt;
-    LOG(INFO) << "Vertice std_deviation / avg: "
-              << std_deviation / avg_vertice_cnt;
-    LOG(INFO) << "Edge balance: "
-              << (double)max_part_edge_cnt / avg_edge_cnt;
-    CHECK_EQ(all_part_edge_cnt, num_edges);
+    LOG(INFO) << "Avg Vertice count(No replicate): "
+              << num_vertices / p;
+    LOG(INFO) << "Vertice std_vertice_deviation / avg: "
+              << std_vertice_deviation / avg_vertice_cnt;
 
+    LOG(INFO) << std::string(20, '#') << "\tEdge       balance\t" << std::string(20, '#');
+    LOG(INFO) << "Max edge count / avg edge count: "
+              << (double)max_part_edge_cnt / avg_edge_cnt;
+    LOG(INFO) << "Max Edge count: "
+              << max_part_edge_cnt;
+    LOG(INFO) << "Avg Edge count: "
+              << avg_edge_cnt;
+    LOG(INFO) << "Edge std_edge_deviation / avg: "
+              << std_edge_deviation / avg_edge_cnt;
+
+    CHECK_EQ(all_part_edge_cnt, num_edges);
+    LOG(INFO) << std::string(20, '#') << "\tReplicate    factor\t" << std::string(20, '#');
     LOG(INFO) << "replication factor (final): " << (double)all_part_vertice_cnt / num_vertices;
 }
 

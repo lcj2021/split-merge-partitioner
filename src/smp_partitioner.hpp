@@ -71,7 +71,7 @@ class SmpPartitioner : public Partitioner
 
     bool check_edge()
     {
-        std::vector<dense_bitset> dbitsets(FLAGS_p, dense_bitset(num_vertices));
+        std::vector<dense_bitset> dbitsets(p, dense_bitset(num_vertices));
         for (vid_t vid = 0; vid < num_vertices; ++ vid) {
             bool assigned_to_a_part = false;
             for (int b = 0; b < p; ++ b) {
@@ -96,7 +96,7 @@ class SmpPartitioner : public Partitioner
             }   
             return true;
         };
-        for (int b = 0; b < FLAGS_p; ++ b) {
+        for (int b = 0; b < p; ++ b) {
             if (!equal_dbitset(dbitsets[b], bucket_info[b].is_mirror)) {
                 return false;
             }
