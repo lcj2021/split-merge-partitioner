@@ -21,6 +21,9 @@ Vertex2EdgePart::Vertex2EdgePart(std::string basefilename) {
     CHECK_NE(FLAGS_k, 0); k = FLAGS_k;
 }
 
+Vertex2EdgePart::~Vertex2EdgePart() {
+}
+
 void 
 Vertex2EdgePart::readVertexPartitioning() {
 	// open the partitioning file
