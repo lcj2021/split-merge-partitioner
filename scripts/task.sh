@@ -97,19 +97,19 @@ wait
 # echo $pid
 # wait
 
-# # Tasks on EBV
-# part_name=$filename".edgepart.ebv".$p
-# echo $part_name
+# Tasks on EBV
+part_name=$filename".edgepart.ebv".$p
+echo $part_name
 
-# nohup mpiexec -n $p -f ~/machines ./pagerank --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name --iterations=100 > $res_path/p_$p/$short/pagerank/ebv &
-# pid=$!
-# echo $pid
-# wait
+nohup mpiexec -n $p -f ~/machines ./pagerank --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name --iterations=100 > $res_path/p_$p/$short/pagerank/ebv &
+pid=$!
+echo $pid
+wait
 
-# nohup mpiexec -n $p -f ~/machines ./connected_component --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name > $res_path/p_$p/$short/cc/ebv &
-# pid=$!
-# echo $pid
-# wait
+nohup mpiexec -n $p -f ~/machines ./connected_component --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name > $res_path/p_$p/$short/cc/ebv &
+pid=$!
+echo $pid
+wait
 
 # nohup mpiexec -n $p -f ~/machines ./approximate_diameter --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name > $res_path/p_$p/$short/diameter/ebv &
 # pid=$!
@@ -117,38 +117,38 @@ wait
 # wait
 
 
-# # Tasks on HDRF
-# part_name=$filename".edgepart.hdrf".$p
-# echo $part_name
+# Tasks on HDRF
+part_name=$filename".edgepart.hdrf".$p
+echo $part_name
 
-# nohup mpiexec -n $p -f ~/machines ./pagerank --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name --iterations=100 > $res_path/p_$p/$short/pagerank/hdrf &
-# pid=$!
-# echo $pid
-# wait
+nohup mpiexec -n $p -f ~/machines ./pagerank --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name --iterations=100 > $res_path/p_$p/$short/pagerank/hdrf &
+pid=$!
+echo $pid
+wait
 
-# nohup mpiexec -n $p -f ~/machines ./connected_component --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name > $res_path/p_$p/$short/cc/hdrf &
-# pid=$!
-# echo $pid
-# wait
+nohup mpiexec -n $p -f ~/machines ./connected_component --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name > $res_path/p_$p/$short/cc/hdrf &
+pid=$!
+echo $pid
+wait
 
 # nohup mpiexec -n $p -f ~/machines ./approximate_diameter --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name > $res_path/p_$p/$short/diameter/hdrf &
 # pid=$!
 # echo $pid
 # wait
 
-# # Tasks on DBH
-# part_name=$filename".edgepart.dbh".$p
-# echo $part_name
+# Tasks on DBH
+part_name=$filename".edgepart.dbh".$p
+echo $part_name
 
-# nohup mpiexec -n $p -f ~/machines ./pagerank --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name --iterations=100 > $res_path/p_$p/$short/pagerank/dbh &
-# pid=$!
-# echo $pid
-# wait
+nohup mpiexec -n $p -f ~/machines ./pagerank --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name --iterations=100 > $res_path/p_$p/$short/pagerank/dbh &
+pid=$!
+echo $pid
+wait
 
-# nohup mpiexec -n $p -f ~/machines ./connected_component --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name > $res_path/p_$p/$short/cc/dbh &
-# pid=$!
-# echo $pid
-# wait
+nohup mpiexec -n $p -f ~/machines ./connected_component --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name > $res_path/p_$p/$short/cc/dbh &
+pid=$!
+echo $pid
+wait
 
 # nohup mpiexec -n $p -f ~/machines ./approximate_diameter --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name > $res_path/p_$p/$short/diameter/dbh &
 # pid=$!

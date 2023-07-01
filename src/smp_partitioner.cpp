@@ -70,17 +70,17 @@ void SmpPartitioner::merge()
         return l.replicas > r.replicas;
     });
 
-    for (int b = 0; b < p * k; ++ b) 
-        LOG(INFO)   << "Bucket_info " << bucket_info[b].old_id 
-                    << " vertices: " << bucket_info[b].replicas 
-                    << " edges: " << bucket_info[b].occupied
-                    << " is_chosen: " << bucket_info[b].is_chosen << std::endl;
 
     curr_bucket_id = 0;
     std::unordered_map<int, int> valid_bucket;  // < old bucket, new bucket >
 
     // valid_bucket = merge_by_size();
     valid_bucket = merge_by_overlap();
+    for (int b = 0; b < p * k; ++ b) 
+        DLOG(INFO)   << "Bucket_info " << bucket_info[b].old_id 
+                    << " vertices: " << bucket_info[b].replicas 
+                    << " edges: " << bucket_info[b].occupied
+                    << " is_chosen: " << bucket_info[b].is_chosen << std::endl;
 
     // rearrange bucket after heuristic merging
     std::sort(bucket_info.begin(), bucket_info.end());
@@ -97,11 +97,6 @@ void SmpPartitioner::merge()
         }
     }
     bucket_info.shrink_to_fit();
-        for (size_t b = 0; b < bucket_info.size(); ++ b) 
-        LOG(INFO) << "Bucket_info " << bucket_info[b].old_id 
-                    << ", vertices: " << bucket_info[b].replicas 
-                    << ", edges: " << bucket_info[b].occupied
-                    << ", rank: " << b;
 
     size_t curr_assigned_edges = rearrange_edge(edges, valid_bucket);
     assigned_edges += curr_assigned_edges;
@@ -221,8 +216,7 @@ void SmpPartitioner::calculate_stats()
     for (int b = 0; b < p; ++ b) 
         LOG(INFO) << "Bucket_info: " << bucket_info[b].old_id 
                 << ", vertices: " << bucket_info[b].replicas 
-                << ", edges: " << bucket_info[b].occupied 
-                << ", rank: " << b;
+                << ", edges: " << bucket_info[b].occupied;
     
     double avg_vertice_cnt = (double)all_part_vertice_cnt / (p);
     double avg_edge_cnt = (double)all_part_edge_cnt / (p);
@@ -236,7 +230,7 @@ void SmpPartitioner::calculate_stats()
     std_vertice_deviation = sqrt((double)std_vertice_deviation / p);
     std_edge_deviation = sqrt((double)std_edge_deviation / p);
     
-        LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
+    LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
     LOG(INFO) << "Max vertice count / avg vertice count: "
               << (double)max_part_vertice_cnt / ((double)num_vertices / (p));
     LOG(INFO) << "Max Vertice count: "
@@ -252,7 +246,7 @@ void SmpPartitioner::calculate_stats()
     LOG(INFO) << "Max Edge count: "
               << max_part_edge_cnt;
     LOG(INFO) << "Avg Edge count: "
-              << avg_edge_cnt;
+              << num_edges / p;
     LOG(INFO) << "Edge std_edge_deviation / avg: "
               << std_edge_deviation / avg_edge_cnt;
 
@@ -299,10 +293,10 @@ void SmpPartitioner::split()
         std::swap(partitioner->occupied[bucket], bucket_info[bucket].occupied);
     }
 
+    std::cerr << "\n" << std::string(25, '#') << " Split phase end, Merge phase start " << std::string(25, '#') << "\n\n";
     merge();
     CHECK_EQ(assigned_edges, num_edges);
 
-    std::cerr << std::string(75, '#') << "\n";
 
     compute_timer.stop();
     LOG(INFO) << "time used for partitioning: " << compute_timer.get_time();

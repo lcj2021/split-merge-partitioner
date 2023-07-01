@@ -125,8 +125,10 @@ void EbvPartitioner::calculate_stats()
     size_t max_part_edge_cnt = *std::max_element(occupied.begin(), occupied.end());
     size_t all_part_edge_cnt = accumulate(occupied.begin(), occupied.end(), (size_t)0);
 
-    rep(i, p)
-        LOG(INFO) << "Partition " << i << " : " << bucket2vcnt[i] << " vertices " << std::endl;
+    for (int b = 0; b < p; ++ b) 
+        LOG(INFO) << "Bucket_info: " << b
+                << ", vertices: " << bucket2vcnt[b]
+                << ", edges: " << occupied[b];
     
     double avg_vertice_cnt = (double)all_part_vertice_cnt / (p);
     double avg_edge_cnt = (double)all_part_edge_cnt / (p);
@@ -140,7 +142,7 @@ void EbvPartitioner::calculate_stats()
     std_vertice_deviation = sqrt((double)std_vertice_deviation / p);
     std_edge_deviation = sqrt((double)std_edge_deviation / p);
     
-        LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
+    LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
     LOG(INFO) << "Max vertice count / avg vertice count: "
               << (double)max_part_vertice_cnt / ((double)num_vertices / (p));
     LOG(INFO) << "Max Vertice count: "
@@ -156,7 +158,7 @@ void EbvPartitioner::calculate_stats()
     LOG(INFO) << "Max Edge count: "
               << max_part_edge_cnt;
     LOG(INFO) << "Avg Edge count: "
-              << avg_edge_cnt;
+              << num_edges / p;
     LOG(INFO) << "Edge std_edge_deviation / avg: "
               << std_edge_deviation / avg_edge_cnt;
 

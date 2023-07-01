@@ -305,7 +305,6 @@ Vertex2EdgePart::split() {
     merge();
     CHECK_EQ(assigned_vertices, num_vertices);
 
-    LOG(INFO) << edges.size() << ' ' << curr_edge_cnt;
     for (auto edge : edges) {
         vid_t from = edge.first, to = edge.second;
         int target_p = findEdgePartition(from, to);
@@ -348,7 +347,7 @@ Vertex2EdgePart::calculate_stats()
     std_vertice_deviation = sqrt((double)std_vertice_deviation / p);
     std_edge_deviation = sqrt((double)std_edge_deviation / p);
     
-        LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
+    LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
     LOG(INFO) << "Max vertice count / avg vertice count: "
               << (double)max_part_vertice_cnt / ((double)num_vertices / (p));
     LOG(INFO) << "Max Vertice count: "
@@ -364,7 +363,7 @@ Vertex2EdgePart::calculate_stats()
     LOG(INFO) << "Max Edge count: "
               << max_part_edge_cnt;
     LOG(INFO) << "Avg Edge count: "
-              << avg_edge_cnt;
+              << num_edges / p;
     LOG(INFO) << "Edge std_edge_deviation / avg: "
               << std_edge_deviation / avg_edge_cnt;
 
