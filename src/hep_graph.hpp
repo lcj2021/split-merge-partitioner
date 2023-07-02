@@ -10,33 +10,39 @@
 #include "util.hpp"
 #include "dense_bitset.hpp"
 
+struct vid_eid_t {
+    vid_t vid;
+    vid_t eid;
+    vid_eid_t(vid_t vid, vid_t eid) : vid(vid), eid(eid) {}
+};
+
 /*
  * Entry in the index array. Contains a reference to the column array and the lengths (in and out) of the entry.
  * Differentiating in and out length allows for preserving direction in a directed graph.
  */
 class mem_adjlist_t{
 	public:
-	vid_t *adj; // link into the column array
+	vid_eid_t *adj; // link into the column array
     vid_t len_out;
     vid_t len_in;
 
   public:
 
     mem_adjlist_t() :   adj(NULL), len_out(0), len_in(0) {}
-    mem_adjlist_t( vid_t *adj) :  adj(adj), len_out(0), len_in(0) {}
+    mem_adjlist_t( vid_eid_t *adj) :  adj(adj), len_out(0), len_in(0) {}
 
-    vid_t *begin() { return adj; }
-    vid_t *end() { return adj + len_out + len_in; }
+    vid_eid_t *begin() { return adj; }
+    vid_eid_t *end() { return adj + len_out + len_in; }
 
     size_t size() const {return len_out + len_in;}
     size_t size_out() const {return len_out;}
     size_t size_in() const {return len_in;}
 
-    void push_back_out(vid_t data){
+    void push_back_out(vid_eid_t data){
     	adj[len_out++] = data;
     };
 
-    void push_back_in(vid_t data, vid_t offset){
+    void push_back_in(vid_eid_t data, vid_t offset){
     	adj[len_in++ + offset] = data; // incoming neighbors are written after the outgoing neighbors.
      };
 
@@ -64,7 +70,7 @@ class mem_graph_t{
 public:
   vid_t num_vertices;
   size_t nedges;
-  vid_t *neighbors;
+  vid_eid_t *neighbors;
   std::vector<mem_adjlist_t> vdata;
   vid_t high_degree_threshold; // starting from which degree is a node considered a high-degree node (if exceeded)
   double high_degree_factor; // average degree * hdf = hdt
@@ -92,6 +98,9 @@ public:
   size_t num_edges() const { return nedges; }
 
   size_t stream_build(std::ifstream &fin, size_t num_edges, dense_bitset &is_high_degree, dense_bitset &has_high_degree_neighbor, std::vector<size_t> &count, bool write_low_degree_edgelist);
+
+  size_t inmemory_build(std::ifstream &fin, size_t num_edges, dense_bitset &is_high_degree, dense_bitset &has_high_degree_neighbor, std::vector<size_t> &count, bool write_low_degree_edgelist, std::vector<edge_t> &edges);
+
   mem_adjlist_t &operator[](size_t idx) { return vdata[idx]; };
 
   const mem_adjlist_t &operator[](size_t idx) const {

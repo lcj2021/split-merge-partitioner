@@ -26,12 +26,23 @@ p=$2
 
 cd ../release
 
-# Partition SMP
+# Partition SMP-NE
 for ((k = 2; k <= 4; ++k))
 do
-    logname=$filename"_smp_k_"$k".log"
+    logname=$filename"_smp_ne_k_"$k".log"
     echo $logname
-    nohup ./main -p $p -k $k -method smp -filename "../../dataset/"$filename -write true > $partition_info_path/p_$p/$short/$logname &
+    nohup ./main -p $p -k $k -method smp_ne -filename "../../dataset/"$filename -write true > $partition_info_path/p_$p/$short/$logname &
+    pid=$!
+    echo $pid
+    wait
+done
+
+# Partition SMP-HEP
+for ((k = 2; k <= 4; ++k))
+do
+    logname=$filename"_smp_hep_k_"$k".log"
+    echo $logname
+    nohup ./main -p $p -k $k -method smp_hep -hdf 100 -filename "../../dataset/"$filename -write true > $partition_info_path/p_$p/$short/$logname &
     pid=$!
     echo $pid
     wait

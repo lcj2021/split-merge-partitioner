@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     else if (FLAGS_method == "ebv")
         partitioner = new EbvPartitioner(FLAGS_filename, false);
     else if (FLAGS_method == "hep")
-        partitioner = new HepPartitioner(FLAGS_filename);
+        partitioner = new HepPartitioner(FLAGS_filename, false);
     else if (FLAGS_method.substr(0, 3) == "smp")
         partitioner = new SmpPartitioner(FLAGS_filename);
     else if (FLAGS_method == "e2a")

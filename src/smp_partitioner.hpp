@@ -62,7 +62,7 @@ class SmpPartitioner : public Partitioner
                 bucket_edge_cnt[edge_bucket] ++;
                 // e[edge_id].remove();
                 ++ curr_assigned_edges;
-            } else {        // [[unlikely]] No edge should be left
+            } else [[unlikely]] {        //  No edge should be left
                 LOG(FATAL) << "Edge(id): " << edge_id << ", bucket: " << edge_bucket << ", should not be left in the final round\n";
             }
         }
@@ -80,10 +80,12 @@ class SmpPartitioner : public Partitioner
                     break;
                 }
             }
-            if (!assigned_to_a_part) return false;
+            if (!assigned_to_a_part) {
+                return false;
+            }
         }
         for (size_t edge_id = 0; edge_id < num_edges; ++ edge_id) {
-            edges[edge_id].recover();
+            // edges[edge_id].recover();
             int16_t edge_bucket = edge2bucket[edge_id];
             vid_t u = edges[edge_id].first, v = edges[edge_id].second;
             dbitsets[edge_bucket].set_bit_unsync(u);
@@ -92,12 +94,20 @@ class SmpPartitioner : public Partitioner
         auto equal_dbitset = [&](const dense_bitset &l, const dense_bitset &r) {
             if (l.size() != r.size()) return false;
             for (size_t bit = 0; bit < l.size(); ++ bit) {
-                if (l.get(bit) != r.get(bit)) { return false; }
+                if (l.get(bit) != r.get(bit)) {
+                    if (l.get(bit) and !r.get(bit)) {
+                        LOG(FATAL) << "LESS";
+                    } else {
+                        LOG(FATAL) << "MORE";
+                    }
+                    return false; 
+                }
             }   
             return true;
         };
         for (int b = 0; b < p; ++ b) {
             if (!equal_dbitset(dbitsets[b], bucket_info[b].is_mirror)) {
+                LOG(FATAL) << "BUG";
                 return false;
             }
         }

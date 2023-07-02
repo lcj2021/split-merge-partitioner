@@ -31,6 +31,13 @@ DECLARE_bool(hybrid_NE);
 typedef uint32_t vid_t;
 const vid_t INVALID_VID = -1;
 const vid_t offset = (vid_t)1 << 31;
+struct edge_with_id_t {
+    vid_t first, second;
+    vid_t eid;
+    edge_with_id_t() : first(0), second(0), eid(0) {}
+    edge_with_id_t(vid_t first, vid_t second, vid_t eid) : first(first), second(second), eid(eid) {}
+};
+
 struct edge_t {
     vid_t first, second;
     edge_t() : first(0), second(0) {}
@@ -86,8 +93,9 @@ inline std::string degree_name(const std::string &basefilename)
 inline std::string partitioned_name(const std::string &basefilename)
 {
     std::string ret = basefilename + ".edgepart.";
-    if (FLAGS_method == "smp") {
-        ret += "smp_k_" + std::to_string(FLAGS_k) + ".";
+    if (FLAGS_method.substr(0, 3) == "smp") {
+        std::string split_method = FLAGS_method.substr(4);
+        ret += "smp_" + split_method + "_k_" + std::to_string(FLAGS_k) + ".";
     } else if (FLAGS_method == "hep") {
         ret += "hep_hdf_" + std::to_string((int)FLAGS_hdf) + ".";
     } else {

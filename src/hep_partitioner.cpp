@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include "hep_partitioner.hpp"
 
-HepPartitioner::HepPartitioner(std::string basefilename) // @suppress("Class members should be properly initialized")
-    : basefilename(basefilename), writer(basefilename, FLAGS_write)
+HepPartitioner::HepPartitioner(std::string basefilename, bool need_k_split) // @suppress("Class members should be properly initialized")
+    : basefilename(basefilename), writer(basefilename, !need_k_split && FLAGS_write)
 {
 
     Timer convert_timer;
@@ -32,10 +32,14 @@ HepPartitioner::HepPartitioner(std::string basefilename) // @suppress("Class mem
               << ", num_edges: " << num_edges;
     CHECK_EQ(sizeof(vid_t) + sizeof(size_t) + num_edges * sizeof(edge_t), filesize);
 
+    p = FLAGS_p;
+    if (need_k_split) {
+        p *= FLAGS_k;
+    }
 
     count.resize(num_vertices, 0);
 
-    p = FLAGS_p; //number of partitions. Value comes from console
+    // p = FLAGS_p; //number of partitions. Value comes from console
     lambda = FLAGS_lambda; //for weighing in balancing score in streaming
     extended_metrics = FLAGS_extended_metrics; // displaying extended metrics
     write_out_partitions = FLAGS_write; // writing out partitions to file
@@ -148,7 +152,8 @@ void HepPartitioner::load_in_memory(std::string basefilename, std::ifstream &fin
 		mem_graph.low_degree_file.open(lowedgelist_name(basefilename), std::ios_base::binary | std::ios_base::out ); // *.low_edgelist file;
 	}
 	mem_graph.resize(num_vertices);
-	num_h2h_edges = mem_graph.stream_build(fin, num_edges, is_high_degree, has_high_degree_neighbor, count, write_low_degree_edgelist);
+	// num_h2h_edges = mem_graph.stream_build(fin, num_edges, is_high_degree, has_high_degree_neighbor, count, write_low_degree_edgelist);
+	num_h2h_edges = mem_graph.inmemory_build(fin, num_edges, is_high_degree, has_high_degree_neighbor, count, write_low_degree_edgelist, edges);
 	mem_graph.h2h_file.close(); //flushed
 	if (write_low_degree_edgelist){
 		mem_graph.low_degree_file.close(); //flushed
@@ -168,8 +173,8 @@ void HepPartitioner::in_memory_assign_remaining(){
 			vid_t i = 0;
 			for(; i < mem_graph[vid].size_out(); i++)
 			{
-				int target = best_scored_partition(vid, neighbors[i]);
-				assign_edge(target, vid, neighbors[i]);
+				int target = best_scored_partition(vid, neighbors[i].vid);
+				assign_edge(target, vid, neighbors[i].vid, neighbors[i].eid);
 			}
 
 			// in case the vertex has high degree neighbors, the edges from
@@ -178,9 +183,9 @@ void HepPartitioner::in_memory_assign_remaining(){
 			if (has_high_degree_neighbor.get(vid)){
 				for(; i < mem_graph[vid].size(); i++) //for the adj_in neighbors
 				{
-					if (is_high_degree.get(neighbors[i])){
-						int target = best_scored_partition(neighbors[i], vid);
-						assign_edge(target, neighbors[i], vid);
+					if (is_high_degree.get(neighbors[i].vid)){
+						int target = best_scored_partition(neighbors[i].vid, vid);
+						assign_edge(target, neighbors[i].vid, vid, neighbors[i].eid);
 					}
 				}
 
@@ -192,7 +197,7 @@ void HepPartitioner::in_memory_assign_remaining(){
 	LOG(INFO) << "Assigning edges between high-degree vertices" << std::endl;
 
 	if (stream_random){
-		random_streaming();
+		// random_streaming();
 	}
 	else {
 		hdrf_streaming();
@@ -202,47 +207,47 @@ void HepPartitioner::in_memory_assign_remaining(){
 
 
 
-void HepPartitioner::random_streaming(){
+// void HepPartitioner::random_streaming(){
 
-	LOG(INFO) << "Streaming randomly." << std::endl;
-	// assign the edges between two high degree vertices
+// 	LOG(INFO) << "Streaming randomly." << std::endl;
+// 	// assign the edges between two high degree vertices
 
-	mem_graph.h2h_file.open(h2hedgelist_name(basefilename), std::ios_base::binary | std::ios_base::in );
-	mem_graph.h2h_file.seekg(0, std::ios::beg);
+// 	mem_graph.h2h_file.open(h2hedgelist_name(basefilename), std::ios_base::binary | std::ios_base::in );
+// 	mem_graph.h2h_file.seekg(0, std::ios::beg);
 
-	std::vector<edge_t> tmp_edges; // temporary buffer to read edges from file
-	size_t chunk_size;
-	size_t left_h2h_edges = mem_graph.num_h2h_edges;
+// 	std::vector<edge_t> tmp_edges; // temporary buffer to read edges from file
+// 	size_t chunk_size;
+// 	size_t left_h2h_edges = mem_graph.num_h2h_edges;
 
-	if (left_h2h_edges >= 100000){
-		chunk_size = 100000; // batch read of so many edges
-	}
-	else {
-		chunk_size = left_h2h_edges;
-	}
-	tmp_edges.resize(chunk_size);
+// 	if (left_h2h_edges >= 100000){
+// 		chunk_size = 100000; // batch read of so many edges
+// 	}
+// 	else {
+// 		chunk_size = left_h2h_edges;
+// 	}
+// 	tmp_edges.resize(chunk_size);
 
-	//	LOG(INFO) << "Chunk size is " << chunk_size << endl;
+// 	//	LOG(INFO) << "Chunk size is " << chunk_size << endl;
 
 
-	while (left_h2h_edges > 0){ // edges to be read
-		mem_graph.h2h_file.read((char *)&tmp_edges[0], sizeof(edge_t) * chunk_size);
-		for (size_t i = 0; i < chunk_size; i++){
+// 	while (left_h2h_edges > 0){ // edges to be read
+// 		mem_graph.h2h_file.read((char *)&tmp_edges[0], sizeof(edge_t) * chunk_size);
+// 		for (size_t i = 0; i < chunk_size; i++){
 
-			bucket = std::rand() % p; // random bucket
+// 			bucket = std::rand() % p; // random bucket
 
-			assign_edge(bucket, tmp_edges[i].first, tmp_edges[i].second);
-			is_boundarys[bucket].set_bit_unsync(tmp_edges[i].first);
-			is_boundarys[bucket].set_bit_unsync(tmp_edges[i].second);
+// 			assign_edge(bucket, tmp_edges[i].first, tmp_edges[i].second);
+// 			is_boundarys[bucket].set_bit_unsync(tmp_edges[i].first);
+// 			is_boundarys[bucket].set_bit_unsync(tmp_edges[i].second);
 
-		}
+// 		}
 
-		left_h2h_edges -= chunk_size;
-		if (left_h2h_edges < chunk_size){ // adapt chunk size for last batch read
-		 chunk_size = left_h2h_edges;
-		}
-	}
-}
+// 		left_h2h_edges -= chunk_size;
+// 		if (left_h2h_edges < chunk_size){ // adapt chunk size for last batch read
+// 		 chunk_size = left_h2h_edges;
+// 		}
+// 	}
+// }
 
 
 void HepPartitioner::hdrf_streaming(){
@@ -253,7 +258,7 @@ void HepPartitioner::hdrf_streaming(){
 	mem_graph.h2h_file.open(h2hedgelist_name(basefilename), std::ios_base::binary | std::ios_base::in );
 	mem_graph.h2h_file.seekg(0, std::ios::beg);
 
-	std::vector<edge_t> tmp_edges; // temporary buffer to read edges from file
+	std::vector<edge_with_id_t> tmp_edges; // temporary buffer to read edges from file
 	size_t chunk_size;
 	size_t left_h2h_edges = mem_graph.num_h2h_edges;
 
@@ -276,15 +281,16 @@ void HepPartitioner::hdrf_streaming(){
 		}
 	}
 
+    LOG(INFO) << left_h2h_edges;
 	while (left_h2h_edges > 0){ // edges to be read
-		mem_graph.h2h_file.read((char *)&tmp_edges[0], sizeof(edge_t) * chunk_size);
+		mem_graph.h2h_file.read((char *)&tmp_edges[0], sizeof(edge_with_id_t) * chunk_size);
 		for (size_t i = 0; i < chunk_size; i++){
 
 			bucket = best_scored_partition(tmp_edges[i].first, tmp_edges[i].second); // according to HDRF scoring
 
-			assign_edge(bucket, tmp_edges[i].first, tmp_edges[i].second);
-			is_boundarys[bucket].set_bit_unsync(tmp_edges[i].first);
-			is_boundarys[bucket].set_bit_unsync(tmp_edges[i].second);
+			assign_edge(bucket, tmp_edges[i].first, tmp_edges[i].second, tmp_edges[i].eid);
+			// is_boundarys[bucket].set_bit_unsync(tmp_edges[i].first);
+			// is_boundarys[bucket].set_bit_unsync(tmp_edges[i].second);
 
 			if (occupied[bucket] > max_size){
 				max_size = occupied[bucket];
@@ -348,7 +354,7 @@ void HepPartitioner::in_memory_clean_up_neighbors(vid_t vid, dense_bitset & is_c
 
 	for(; j< num_neigh_out; j++){
 	    //naive vid_t u = neighbors.get_neighbor(neighbors_file, i);
-		vid_t u = neighbors.adj[i];
+		vid_t u = neighbors.adj[i].vid;
 	    if (is_core.get(u)){ // neighbor u is in core, so edge is removed
 	    	invalidated_edges_count++;
 	    	neighbors.erase_out(i);
@@ -367,7 +373,7 @@ void HepPartitioner::in_memory_clean_up_neighbors(vid_t vid, dense_bitset & is_c
 	 }
 
 	 for(; j< num_neigh_size; j++){
-		 vid_t u = neighbors.adj[i];
+		 vid_t u = neighbors.adj[i].vid;
 	     if (is_core.get(u)){ // neighbor u is in core, so edge is removed
 	    	 invalidated_edges_count++;
 	         neighbors.erase_in(i);
@@ -444,6 +450,12 @@ void HepPartitioner::partition_in_memory(){
 
         min_heap.clear();
 
+        for (vid_t vid : vid_id_not_in_boundary) {
+            LOG(INFO) << "vid_id_not_in_boundary " << bucket << ": " << vid;
+            is_boundary.set_unsync(vid, 0);
+        }
+        vid_id_not_in_boundary.clear();
+
         if (expansion_finished){
         	break;
         }
@@ -501,6 +513,7 @@ int HepPartitioner::best_scored_partition(vid_t u, vid_t v) {
 void HepPartitioner::split()
 {
     // int abort_counter = 0;
+    assigned.assign(num_edges, false);
     LOG(INFO) << "partition `" << basefilename << "'";
     LOG(INFO) << "number of partitions: " << p;
 
@@ -529,6 +542,7 @@ void HepPartitioner::split()
     calculate_stats();
 
     CHECK_EQ(assigned_edges, num_edges);
+    // CHECK_EQ(check_edge(), 1);
 
     total_time.stop();
     LOG(INFO) << "total partition time: " << total_time.get_time();

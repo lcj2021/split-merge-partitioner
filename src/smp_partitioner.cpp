@@ -25,8 +25,8 @@ SmpPartitioner::SmpPartitioner(std::string basefilename)
         partitioner = new EbvPartitioner(FLAGS_filename, true);
     } else if (split_method == "hdrf") {
         partitioner = new HdrfPartitioner(FLAGS_filename, true);
-    // } else if (split_method == "hep") {
-    //     partitioner = new HepPartitioner(FLAGS_filename, true);
+    } else if (split_method == "hep") {
+        partitioner = new HepPartitioner(FLAGS_filename, true);
     } else {
         LOG(ERROR) << "Unknown split method!";
     }
@@ -285,13 +285,15 @@ void SmpPartitioner::split()
     compute_timer.start();
 
     partitioner->split();
-
-    std::swap(edges, partitioner->edges);
-    std::swap(edge2bucket, partitioner->edge2bucket);
-    for (int bucket = 0; bucket < p * k; bucket++) {
-        std::swap(partitioner->is_boundarys[bucket], bucket_info[bucket].is_mirror);
-        std::swap(partitioner->occupied[bucket], bucket_info[bucket].occupied);
+    {
+        std::swap(edges, partitioner->edges);
+        std::swap(edge2bucket, partitioner->edge2bucket);
+        for (int bucket = 0; bucket < p * k; bucket++) {
+            std::swap(partitioner->is_boundarys[bucket], bucket_info[bucket].is_mirror);
+            std::swap(partitioner->occupied[bucket], bucket_info[bucket].occupied);
+        }
     }
+    delete partitioner;
 
     std::cerr << "\n" << std::string(25, '#') << " Split phase end, Merge phase start " << std::string(25, '#') << "\n\n";
     merge();
@@ -307,8 +309,7 @@ void SmpPartitioner::split()
     total_time.stop();
     LOG(INFO) << "total partition time: " << total_time.get_time();
 
-    bool check_res = check_edge();
-    CHECK_EQ(check_res, true);
+    CHECK_EQ(check_edge(), true);
     
     if (FLAGS_write) 
         LOG(INFO) << "Writing result...";
