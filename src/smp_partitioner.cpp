@@ -12,27 +12,28 @@ SmpPartitioner::SmpPartitioner(std::string basefilename)
 {
     p = FLAGS_p;
     k = FLAGS_k;
+    split_partitioner = NULL;
     LOG(INFO) << "k = " << k
                 << ", p = " << p;
 
     total_time.start();
     std::string split_method = FLAGS_method == "smp" ? "ne" : FLAGS_method.substr(4);
     if (split_method == "ne") {
-        partitioner = new NePartitioner(FLAGS_filename, true);
+        split_partitioner = new NePartitioner(FLAGS_filename, true);
     } else if (split_method == "dbh") {
-        partitioner = new DbhPartitioner(FLAGS_filename, true);
+        split_partitioner = new DbhPartitioner(FLAGS_filename, true);
     } else if (split_method == "ebv") {
-        partitioner = new EbvPartitioner(FLAGS_filename, true);
+        split_partitioner = new EbvPartitioner(FLAGS_filename, true);
     } else if (split_method == "hdrf") {
-        partitioner = new HdrfPartitioner(FLAGS_filename, true);
+        split_partitioner = new HdrfPartitioner(FLAGS_filename, true);
     } else if (split_method == "hep") {
-        partitioner = new HepPartitioner(FLAGS_filename, true);
+        split_partitioner = new HepPartitioner(FLAGS_filename, true);
     } else {
         LOG(ERROR) << "Unknown split method!";
     }
 
-    num_vertices = partitioner->num_vertices;
-    num_edges = partitioner->num_edges;
+    num_vertices = split_partitioner->num_vertices;
+    num_edges = split_partitioner->num_edges;
 
     bucket_info.assign(k * p, bucket_info_item(num_vertices));
     for (int i = 0; i < k * p; ++ i) bucket_info[i].old_id = i;
@@ -284,16 +285,24 @@ void SmpPartitioner::split()
     LOG(INFO) << "partitioning...";
     compute_timer.start();
 
-    partitioner->split();
+    split_partitioner->split();
     {
-        std::swap(edges, partitioner->edges);
-        std::swap(edge2bucket, partitioner->edge2bucket);
+        std::swap(edges, split_partitioner->edges);
+        std::swap(edge2bucket, split_partitioner->edge2bucket);
         for (int bucket = 0; bucket < p * k; bucket++) {
-            std::swap(partitioner->is_boundarys[bucket], bucket_info[bucket].is_mirror);
-            std::swap(partitioner->occupied[bucket], bucket_info[bucket].occupied);
+            std::swap(split_partitioner->is_boundarys[bucket], bucket_info[bucket].is_mirror);
+            std::swap(split_partitioner->occupied[bucket], bucket_info[bucket].occupied);
+        }
+        if (edges.size() == 0) {
+            LOG(INFO) << "Loading edges list...";
+            std::ifstream fin(binedgelist_name(basefilename),
+                      std::ios::binary | std::ios::ate); 
+            fin.seekg(sizeof(num_vertices) + sizeof(num_edges), std::ios::beg);
+            edges.resize(num_edges);
+            fin.read((char *)&edges[0], sizeof(edge_t) * num_edges);
         }
     }
-    delete partitioner;
+    delete split_partitioner;
 
     std::cerr << "\n" << std::string(25, '#') << " Split phase end, Merge phase start " << std::string(25, '#') << "\n\n";
     merge();

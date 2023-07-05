@@ -26,73 +26,73 @@ p=$2
 
 cd ../release
 
-# Partition SMP-NE
-for ((k = 2; k <= 4; ++k))
-do
-    logname=$filename"_smp_ne_k_"$k".log"
-    echo $logname
-    nohup ./main -p $p -k $k -method smp_ne -filename "../../dataset/"$filename -write true > $partition_info_path/p_$p/$short/$logname &
-    pid=$!
-    echo $pid
-    wait
-done
+# # Partition SMP-NE
+# for ((k = 2; k <= 4; ++k))
+# do
+#     logname=$filename"_smp_ne_k_"$k".log"
+#     echo $logname
+#     nohup ./main -p $p -k $k -method smp_ne -filename "../../dataset/"$filename > $partition_info_path/p_$p/$short/$logname &
+#     pid=$!
+#     echo $pid
+#     wait
+# done
 
 # Partition SMP-HEP
-for ((k = 2; k <= 4; ++k))
+for ((k = 2; k <= 3; ++k))
 do
     logname=$filename"_smp_hep_k_"$k".log"
     echo $logname
-    nohup ./main -p $p -k $k -method smp_hep -hdf 100 -filename "../../dataset/"$filename -write true > $partition_info_path/p_$p/$short/$logname &
+    nohup ./main -p $p -k $k -method smp_hep -hdf 100 -filename "../../dataset/"$filename > $partition_info_path/p_$p/$short/$logname &
     pid=$!
     echo $pid
     wait
 done
 
-# Partition HEP
-hdf_list=(1 10 100)
-for ((i = 0; i < ${#hdf_list[@]}; ++i))
-do
-    hdf=${hdf_list[i]}
-    logname=$filename"_hep_hdf_"$hdf".log"
-    echo $logname
-    nohup ./main -p $p -hdf $hdf -method hep -filename "../../dataset/"$filename -write true > $partition_info_path/p_$p/$short/$logname &
-    pid=$!
-    echo $pid
-    wait
-done
+# # Partition HEP
+# hdf_list=(1 10 100)
+# for ((i = 0; i < ${#hdf_list[@]}; ++i))
+# do
+#     hdf=${hdf_list[i]}
+#     logname=$filename"_hep_hdf_"$hdf".log"
+#     echo $logname
+#     nohup ./main -p $p -hdf $hdf -method hep -filename "../../dataset/"$filename > $partition_info_path/p_$p/$short/$logname &
+#     pid=$!
+#     echo $pid
+#     wait
+# done
 
-# Partition NE
-logname=$filename"_ne.log"
-echo $logname
-nohup ./main -p $p -method ne -filename "../../dataset/"$filename -write true > $partition_info_path/p_$p/$short/$logname &
-pid=$!
-echo $pid
-wait
+# # Partition NE
+# logname=$filename"_ne.log"
+# echo $logname
+# nohup ./main -p $p -method ne -filename "../../dataset/"$filename > $partition_info_path/p_$p/$short/$logname &
+# pid=$!
+# echo $pid
+# wait
 
-# Partition EBV
-logname=$filename"_ebv.log"
-echo $logname
-nohup ./main -p $p -method ebv -filename "../../dataset/"$filename -write true > $partition_info_path/p_$p/$short/$logname &
-pid=$!
-echo $pid
-wait
+# # Partition EBV
+# logname=$filename"_ebv.log"
+# echo $logname
+# nohup ./main -p $p -method ebv -filename "../../dataset/"$filename > $partition_info_path/p_$p/$short/$logname &
+# pid=$!
+# echo $pid
+# wait
 
-# Partition HDRF
-logname=$filename"_hdrf.log"
-echo $logname
-nohup ./main -p $p -method hdrf -filename "../../dataset/"$filename -write true > $partition_info_path/p_$p/$short/$logname &
-pid=$!
-echo $pid
-wait
+# # Partition HDRF
+# logname=$filename"_hdrf.log"
+# echo $logname
+# nohup ./main -p $p -method hdrf -filename "../../dataset/"$filename > $partition_info_path/p_$p/$short/$logname &
+# pid=$!
+# echo $pid
+# wait
 
-# Partition DBH
-logname=$filename"_dbh.log"
-echo $logname
-nohup ./main -p $p -method dbh -filename "../../dataset/"$filename -write true > $partition_info_path/p_$p/$short/$logname &
-pid=$!
-echo $pid
-wait
+# # Partition DBH
+# logname=$filename"_dbh.log"
+# echo $logname
+# nohup ./main -p $p -method dbh -filename "../../dataset/"$filename > $partition_info_path/p_$p/$short/$logname &
+# pid=$!
+# echo $pid
+# wait
 
-ls -lh ../../dataset/$filename.edgepart.*
-wc -l ../../dataset/$filename.edgepart.*
-rm -f ../../dataset/$filename.edgepart.*
+# ls -lh ../../dataset/$filename.edgepart.*
+# wc -l ../../dataset/$filename.edgepart.*
+# rm -f ../../dataset/$filename.edgepart.*

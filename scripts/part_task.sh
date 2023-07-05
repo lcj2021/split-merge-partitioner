@@ -40,6 +40,17 @@ if [ $partition_needed -eq 1 ]; then
         wait
     done
 
+    # Partition SMP-HEP
+    for ((k = 2; k <= 3; ++k))
+    do
+        logname=$filename"_smp_hep_k_"$k".log"
+        echo $logname
+        nohup ../release/main -p $p -k $k -method smp_hep -hdf 100 -filename "../../dataset/"$filename -write true > $partition_info_path/p_$p/$short/$logname &
+        pid=$!
+        echo $pid
+        wait
+    done
+
     # Partition HEP
     hdf_list=(1 10 100)
     for ((i = 0; i < ${#hdf_list[@]}; ++i))
@@ -109,6 +120,27 @@ do
     wait
 
     nohup mpiexec -n $p -f ~/machines ./approximate_diameter --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name > $res_path/p_$p/$short/diameter/smp_k_$k &
+    pid=$!
+    echo $pid
+    wait
+done
+
+for ((k = 2; k <= 3; ++k))
+do
+    part_name=$filename".edgepart.smp_hep_k_"$k"."$p
+    echo $part_name
+
+    nohup mpiexec -n $p -f ~/machines ./pagerank --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name --iterations=100 > $res_path/p_$p/$short/pagerank/smp_hep_k_$k &
+    pid=$!
+    echo $pid
+    wait
+
+    nohup mpiexec -n $p -f ~/machines ./connected_component --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name > $res_path/p_$p/$short/cc/smp_hep_k_$k &
+    pid=$!
+    echo $pid
+    wait
+
+    nohup mpiexec -n $p -f ~/machines ./approximate_diameter --format=snap_dist --graph_opts ingress=my --graph=$data_path/$part_name > $res_path/p_$p/$short/diameter/smp_hep_k_$k &
     pid=$!
     echo $pid
     wait

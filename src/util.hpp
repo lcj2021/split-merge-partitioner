@@ -94,7 +94,7 @@ inline std::string partitioned_name(const std::string &basefilename)
 {
     std::string ret = basefilename + ".edgepart.";
     if (FLAGS_method.substr(0, 3) == "smp") {
-        std::string split_method = FLAGS_method.substr(4);
+        std::string split_method = FLAGS_method == "smp" ? "ne" : FLAGS_method.substr(4);
         ret += "smp_" + split_method + "_k_" + std::to_string(FLAGS_k) + ".";
     } else if (FLAGS_method == "hep") {
         ret += "hep_hdf_" + std::to_string((int)FLAGS_hdf) + ".";

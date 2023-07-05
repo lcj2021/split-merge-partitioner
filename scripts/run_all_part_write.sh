@@ -37,6 +37,17 @@ do
     wait
 done
 
+# Partition SMP-HEP
+for ((k = 2; k <= 3; ++k))
+do
+    logname=$filename"_smp_hep_k_"$k".log"
+    echo $logname
+    nohup ./main -p $p -k $k -method smp_hep -hdf 100 -filename "../../dataset/"$filename -write true > $partition_info_path/p_$p/$short/$logname &
+    pid=$!
+    echo $pid
+    wait
+done
+
 # Partition HEP
 hdf_list=(1 10 100)
 for ((i = 0; i < ${#hdf_list[@]}; ++i))

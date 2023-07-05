@@ -24,7 +24,7 @@ class SmpPartitioner : public Partitioner
 {
   
   private:
-    Partitioner *partitioner;
+    Partitioner *split_partitioner;
 
     std::string basefilename;
 
@@ -62,7 +62,7 @@ class SmpPartitioner : public Partitioner
                 bucket_edge_cnt[edge_bucket] ++;
                 // e[edge_id].remove();
                 ++ curr_assigned_edges;
-            } else [[unlikely]] {        //  No edge should be left
+            } else {        // [[unlikely]]  No edge should be left
                 LOG(FATAL) << "Edge(id): " << edge_id << ", bucket: " << edge_bucket << ", should not be left in the final round\n";
             }
         }
@@ -94,22 +94,12 @@ class SmpPartitioner : public Partitioner
         auto equal_dbitset = [&](const dense_bitset &l, const dense_bitset &r) {
             if (l.size() != r.size()) return false;
             for (size_t bit = 0; bit < l.size(); ++ bit) {
-                if (l.get(bit) != r.get(bit)) {
-                    if (l.get(bit) and !r.get(bit)) {
-                        LOG(FATAL) << "LESS";
-                    } else {
-                        LOG(FATAL) << "MORE";
-                    }
-                    return false; 
-                }
+                if (l.get(bit) != r.get(bit)) { return false; }
             }   
             return true;
         };
         for (int b = 0; b < p; ++ b) {
-            if (!equal_dbitset(dbitsets[b], bucket_info[b].is_mirror)) {
-                LOG(FATAL) << "BUG";
-                return false;
-            }
+            if (!equal_dbitset(dbitsets[b], bucket_info[b].is_mirror)) { return false; }
         }
         return true;
     }

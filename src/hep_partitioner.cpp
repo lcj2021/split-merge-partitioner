@@ -152,8 +152,8 @@ void HepPartitioner::load_in_memory(std::string basefilename, std::ifstream &fin
 		mem_graph.low_degree_file.open(lowedgelist_name(basefilename), std::ios_base::binary | std::ios_base::out ); // *.low_edgelist file;
 	}
 	mem_graph.resize(num_vertices);
-	// num_h2h_edges = mem_graph.stream_build(fin, num_edges, is_high_degree, has_high_degree_neighbor, count, write_low_degree_edgelist);
-	num_h2h_edges = mem_graph.inmemory_build(fin, num_edges, is_high_degree, has_high_degree_neighbor, count, write_low_degree_edgelist, edges);
+	num_h2h_edges = mem_graph.stream_build(fin, num_edges, is_high_degree, has_high_degree_neighbor, count, write_low_degree_edgelist);
+	// num_h2h_edges = mem_graph.inmemory_build(fin, num_edges, is_high_degree, has_high_degree_neighbor, count, write_low_degree_edgelist, edges);
 	mem_graph.h2h_file.close(); //flushed
 	if (write_low_degree_edgelist){
 		mem_graph.low_degree_file.close(); //flushed
@@ -281,7 +281,6 @@ void HepPartitioner::hdrf_streaming(){
 		}
 	}
 
-    LOG(INFO) << left_h2h_edges;
 	while (left_h2h_edges > 0){ // edges to be read
 		mem_graph.h2h_file.read((char *)&tmp_edges[0], sizeof(edge_with_id_t) * chunk_size);
 		for (size_t i = 0; i < chunk_size; i++){

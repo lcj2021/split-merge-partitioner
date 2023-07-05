@@ -11,10 +11,9 @@
 #include "dense_bitset.hpp"
 
 struct vid_eid_t {
-    vid_t vid;
-    vid_t eid;
+    vid_t vid, eid;
     vid_eid_t(vid_t vid, vid_t eid) : vid(vid), eid(eid) {}
-};
+} __attribute__((packed)) ;
 
 /*
  * Entry in the index array. Contains a reference to the column array and the lengths (in and out) of the entry.
@@ -72,15 +71,15 @@ public:
   size_t nedges;
   vid_eid_t *neighbors;
   std::vector<mem_adjlist_t> vdata;
-  vid_t high_degree_threshold; // starting from which degree is a node considered a high-degree node (if exceeded)
   double high_degree_factor; // average degree * hdf = hdt
+  vid_t high_degree_threshold; // starting from which degree is a node considered a high-degree node (if exceeded)
   std::fstream h2h_file; // file that keeps edges between two high-degree vertices on external memory
   std::fstream low_degree_file; // file that keeps edges incident to a low-degree vertex on external memory
   size_t num_h2h_edges;
 
 
 public:
-  mem_graph_t() : num_vertices(0), nedges(0), high_degree_factor(0), high_degree_threshold(0), num_h2h_edges(0) {  }
+  mem_graph_t() : num_vertices(0), nedges(0), neighbors(NULL), high_degree_factor(0), high_degree_threshold(0), num_h2h_edges(0) {  }
 
   ~mem_graph_t()
   {

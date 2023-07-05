@@ -76,16 +76,6 @@ class HepPartitioner : public Partitioner
         CHECK_EQ(edge2bucket[edge_id], -1);
         edge2bucket[edge_id] = cbucket;
 
-        // vid_t u = edges[edge_id].first, v = edges[edge_id].second;
-        // // if (!(u == from and v == to) and !(u == to and v == from)) {
-        // if (!(u == from and v == to)) {
-        //     LOG(FATAL) << "BUG";
-        // }
-
-        // if (from == 17340 or to == 17340) {
-        //     LOG(INFO) << "17340 -> " << cbucket << ", edge_id: " << edge_id;
-        // }
-
         is_boundarys[cbucket].set_bit_unsync(from);
         is_boundarys[cbucket].set_bit_unsync(to);
 
@@ -101,11 +91,6 @@ class HepPartitioner : public Partitioner
 		}
 
 		is_boundary.set_bit_unsync(vid);
-        if (vid == 17340) {
-            LOG(INFO) << "17340, " << "in_memory_add_boundary " << bucket;
-            LOG(INFO) << "mem_graph[vid].size_out(): " << mem_graph[vid].size_out();
-            LOG(INFO) << "mem_graph[vid].size(): " << mem_graph[vid].size();
-        }
 
 		if (is_high_degree.get(vid)){ // high degree vertices are treated as if they were in the core
 			is_in_a_core.set_bit_unsync(vid);
@@ -128,7 +113,6 @@ class HepPartitioner : public Partitioner
                 bucket_full_at_start = true;
             }
             
-
 			vid_eid_t &u = neighbors[count];
 
 			if (is_high_degree.get(u.vid)){ // high degree vertices are always considered to be in c
@@ -179,10 +163,6 @@ class HepPartitioner : public Partitioner
             if (count == 0 && bucket_full) {
                 bucket_full_at_start = true;
             }
-            if (count == 0 && vid == 17340) {
-                LOG(INFO) << "bucket_full ? " << bucket_full;
-                LOG(INFO) << "bucket_full ? " << bucket_full;
-            }
 
 			vid_eid_t &u = neighbors[count];
 
@@ -226,8 +206,6 @@ class HepPartitioner : public Partitioner
 			}
 		}
         if (bucket_full_at_start) {
-		    // is_boundary.set_bit_unsync(vid);
-            LOG(INFO) << vid << ", bucket_full_at_start";
             vid_id_not_in_boundary.emplace_back(vid);
         }
     }
@@ -266,72 +244,6 @@ class HepPartitioner : public Partitioner
            	return true;
        	}
     }
-
-    // bool check_edge()
-    // {
-    //     LOG(INFO) << std::accumulate(assigned.begin(), assigned.end(), 0);
-    //     std::vector<dense_bitset> dbitsets(p, dense_bitset(num_vertices));
-    //     for (vid_t vid = 0; vid < num_vertices; ++ vid) {
-    //         bool assigned_to_a_part = false;
-    //         for (int b = 0; b < p; ++ b) {
-    //             if (is_boundarys[b].get(vid)) {
-    //                 assigned_to_a_part = true;
-    //                 break;
-    //             }
-    //         }
-    //         if (!assigned_to_a_part) {
-    //             LOG(FATAL) << "BUG, vid = " << vid;
-    //             return false;
-    //         }
-    //     }
-    //     LOG(INFO) << num_edges;
-    //     for (size_t edge_id = 0; edge_id < num_edges; ++ edge_id) {
-    //         // edges[edge_id].recover();
-    //         int16_t edge_bucket = edge2bucket[edge_id];
-    //         if (edge_id == 30202525) {
-    //             LOG(INFO) << "eid 30202525 -> " << edge_bucket;
-    //         }
-    //         CHECK_NE(edge_bucket, -1);
-    //         vid_t u = edges[edge_id].first, v = edges[edge_id].second;
-    //         dbitsets[edge_bucket].set_bit_unsync(u);
-    //         dbitsets[edge_bucket].set_bit_unsync(v);
-    //     }
-    //     size_t r0 = 0, r1 = 0;
-    //     for (int b = 0; b < p; ++ b) {
-    //         r0 = dbitsets[b].popcount();
-    //         r1 = is_boundarys[b].popcount();
-    //         LOG(INFO) << "bucket: " << b << ' ' << r0 << ' ' << r1;
-    //         // if (b == 2 or b == 3) {
-    //         if (r0 != r1) {
-    //             for (vid_t vid = 0; vid < num_vertices; ++vid) {
-    //                 if (!dbitsets[b].get(vid) and is_boundarys[b].get(vid)) {
-    //                     LOG(INFO) << "vid: " << vid << " not in dbitsets " << b;
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     auto equal_dbitset = [&](const dense_bitset &l, const dense_bitset &r) {
-    //         if (l.size() != r.size()) return false;
-    //         for (size_t bit = 0; bit < l.size(); ++ bit) {
-    //             if (l.get(bit) != r.get(bit)) {
-    //                 if (l.get(bit) and !r.get(bit)) {
-    //                     LOG(FATAL) << "LESS";
-    //                 } else {
-    //                     LOG(FATAL) << "MORE";
-    //                 }
-    //                 return false; 
-    //             }
-    //         }   
-    //         return true;
-    //     };
-    //     for (int b = 0; b < p; ++ b) {
-    //         if (!equal_dbitset(dbitsets[b], is_boundarys[b])) {
-    //             LOG(FATAL) << "BUG, b = " << b;
-    //             return false;
-    //         }
-    //     }
-    //     return true;
-    // }
 
     void load_in_memory(std::string basefilename, std::ifstream &fin);
     void partition_in_memory();
