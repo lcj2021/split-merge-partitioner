@@ -20,6 +20,7 @@ DEFINE_string(filetype, "edgelist",
               "the type of input file (supports 'edgelist' and 'adjlist')");
 DEFINE_bool(write, false, "write out partition result");
 DEFINE_int32(k, 2, "the exact partitions count / remain partitions");
+DEFINE_bool(fastmerge, false, "whether use fast merge");
 DEFINE_string(method, "sne",
               "partition method: ne, sne, random, and dbh");
 

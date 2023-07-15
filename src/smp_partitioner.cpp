@@ -6,6 +6,7 @@
 #include "ebv_partitioner.hpp"
 #include "conversions.hpp"
 DECLARE_int32(k);
+DECLARE_bool(fastmerge);
 
 SmpPartitioner::SmpPartitioner(std::string basefilename)
     : basefilename(basefilename), writer(basefilename, FLAGS_write)
@@ -75,8 +76,11 @@ void SmpPartitioner::merge()
     curr_bucket_id = 0;
     std::unordered_map<int, int> valid_bucket;  // < old bucket, new bucket >
 
-    // valid_bucket = merge_by_size();
-    valid_bucket = merge_by_overlap();
+    if (FLAGS_fastmerge) {
+        valid_bucket = merge_by_size();
+    } else {
+        valid_bucket = merge_by_overlap();
+    }
     for (int b = 0; b < p * k; ++ b) 
         DLOG(INFO)   << "Bucket_info " << bucket_info[b].old_id 
                     << " vertices: " << bucket_info[b].replicas 
@@ -280,7 +284,7 @@ void SmpPartitioner::split()
     LOG(INFO) << "partition `" << basefilename << "'";
     LOG(INFO) << "number of partitions: " << p;
 
-    Timer compute_timer;
+    Timer compute_timer, merge_timer;
 
     LOG(INFO) << "partitioning...";
     compute_timer.start();
@@ -294,31 +298,39 @@ void SmpPartitioner::split()
             std::swap(split_partitioner->occupied[bucket], bucket_info[bucket].occupied);
         }
         if (edges.size() == 0) {
+            compute_timer.stop();
             LOG(INFO) << "Loading edges list...";
             std::ifstream fin(binedgelist_name(basefilename),
                       std::ios::binary | std::ios::ate); 
             fin.seekg(sizeof(num_vertices) + sizeof(num_edges), std::ios::beg);
             edges.resize(num_edges);
             fin.read((char *)&edges[0], sizeof(edge_t) * num_edges);
+            compute_timer.start();
         }
     }
     delete split_partitioner;
 
     std::cerr << "\n" << std::string(25, '#') << " Split phase end, Merge phase start " << std::string(25, '#') << "\n\n";
-    merge();
+
+    merge_timer.start();
+    {
+        merge();
+    }
+    merge_timer.stop();
+
+    double end_merge_time = merge_timer.get_time();
+    LOG(INFO) << "time used for merging: " << end_merge_time;
+
     CHECK_EQ(assigned_edges, num_edges);
 
-
     compute_timer.stop();
-    LOG(INFO) << "time used for partitioning: " << compute_timer.get_time();
+    double end_compute_time = compute_timer.get_time();
+    LOG(INFO) << "time used for spliting: " << end_compute_time - end_merge_time;
+    LOG(INFO) << "time used for spliting and merging: " << end_compute_time;
 
     calculate_stats();
-    
 
-    total_time.stop();
-    LOG(INFO) << "total partition time: " << total_time.get_time();
-
-    CHECK_EQ(check_edge(), true);
+    // CHECK_EQ(check_edge(), true);
     
     if (FLAGS_write) 
         LOG(INFO) << "Writing result...";

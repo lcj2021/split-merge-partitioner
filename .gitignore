@@ -7,4 +7,6 @@ debug/
 .clang-format
 .ycm_extra_conf.py
 partition_log/
-scripts/tmp.sh
+scripts/
+partition_log*
+smp_elect_backup/

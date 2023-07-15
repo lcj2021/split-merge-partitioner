@@ -450,7 +450,6 @@ void HepPartitioner::partition_in_memory(){
         min_heap.clear();
 
         for (vid_t vid : vid_id_not_in_boundary) {
-            LOG(INFO) << "vid_id_not_in_boundary " << bucket << ": " << vid;
             is_boundary.set_unsync(vid, 0);
         }
         vid_id_not_in_boundary.clear();
