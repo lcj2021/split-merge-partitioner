@@ -2,7 +2,7 @@
  * vertex2edgePart.cpp
  *
  *  Created on: June 19, 2023
- *      Author: Lcj2021
+ *      Author: xxx
  *      Base on: Mayerrn
  *      Description: Use to transform METIS edge cut to vertex cut. 
  *              First get adjacent list by method "e2a". 
