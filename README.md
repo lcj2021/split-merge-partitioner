@@ -5,14 +5,16 @@ FSM: A Fine-grained Splitting and Merging Framework for Dual-balanced Graph Part
 
 ## Compile
 
+cmake, glog, gflags, boost are required:
+
+`sudo apt-get install libgoogle-glog-dev libgflags-dev libboost-all-dev`
+
 ```sh
 mkdir release 
 cd release
 cmake ..
 make -j 4
 ```
-
-
 
 ## Run
 
