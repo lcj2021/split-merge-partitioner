@@ -28,7 +28,7 @@ add_executable (main
     src/util.cpp
     src/graph.cpp
     src/hep_graph.cpp
-    src/smp_partitioner.cpp
+    src/fsm_partitioner.cpp
     src/ne_partitioner.cpp
     src/ebv_partitioner.cpp
     src/hdrf_partitioner.cpp

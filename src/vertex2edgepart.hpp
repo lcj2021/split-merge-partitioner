@@ -100,8 +100,8 @@ private:
     void calculate_stats();
 
     int merge_bucket(int dst, int src, bool &has_intersection);
-    std::unordered_map<int, int> merge_by_size();
-    std::unordered_map<int, int> merge_by_overlap();
+    std::unordered_map<int, int> fast_merge();
+    std::unordered_map<int, int> precise_merge();
 
 public:
 	Vertex2EdgePart(std::string basefilename);

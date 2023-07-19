@@ -83,8 +83,8 @@ Vertex2EdgePart::merge() {
     curr_bucket_id = 0;
     std::unordered_map<int, int> valid_bucket;  // < old bucket, new bucket >
 
-    // valid_bucket = merge_by_size();
-    valid_bucket = merge_by_overlap();
+    // valid_bucket = fast_merge();
+    valid_bucket = precise_merge();
 
     // rearrange bucket after heuristic merging
     std::sort(bucket_info.begin(), bucket_info.end());
@@ -112,7 +112,7 @@ Vertex2EdgePart::merge() {
 }
 
 std::unordered_map<int, int> 
-Vertex2EdgePart::merge_by_size()
+Vertex2EdgePart::fast_merge()
 {
     std::unordered_map<int, int> valid_bucket;  // < old bucket, new bucket >
     
@@ -146,7 +146,7 @@ Vertex2EdgePart::merge_by_size()
 }
 
 std::unordered_map<int, int> 
-Vertex2EdgePart::merge_by_overlap()
+Vertex2EdgePart::precise_merge()
 {
     std::unordered_map<int, int> valid_bucket;  // < old bucket, new bucket >
 

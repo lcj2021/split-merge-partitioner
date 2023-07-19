@@ -19,13 +19,13 @@ make -j 4
 Run with FSM-H (HEP-100) k=2, p=32
 
 ```shell
-./main -p 32 -k 2 -method smp_hep -hdf 100 -filename ../../dataset/...
+./main -p 32 -k 2 -method fsm_hep -hdf 100 -filename ../../dataset/...
 ```
 
 Run with FSM-N (NE) k=2, p=32
 
 ```shell
-./main -p 32 -k 2 -method smp_ne -filename ../../dataset/...
+./main -p 32 -k 2 -method fsm_ne -filename ../../dataset/...
 ```
 
 

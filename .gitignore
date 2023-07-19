@@ -9,4 +9,4 @@ debug/
 partition_log/
 scripts/
 partition_log*
-smp_elect_backup/
+fsm_elect_backup/

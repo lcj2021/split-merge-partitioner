@@ -20,7 +20,7 @@
 #include "graph.hpp"
 
 /* SplitMerge Partitioner (SMP) */
-class SmpPartitioner : public Partitioner
+class FsmPartitioner : public Partitioner
 {
   
   private:
@@ -119,10 +119,10 @@ class SmpPartitioner : public Partitioner
     void calculate_stats();
 
     int merge_bucket(int dst, int src, bool &has_intersection);
-    std::unordered_map<int, int> merge_by_size();
-    std::unordered_map<int, int> merge_by_overlap();
+    std::unordered_map<int, int> fast_merge();
+    std::unordered_map<int, int> precise_merge();
 
   public:
-    SmpPartitioner(std::string basefilename);
+    FsmPartitioner(std::string basefilename);
     void split();
 };

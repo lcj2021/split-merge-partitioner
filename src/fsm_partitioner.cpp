@@ -1,4 +1,4 @@
-#include "smp_partitioner.hpp"
+#include "fsm_partitioner.hpp"
 #include "ne_partitioner.hpp"
 #include "hdrf_partitioner.hpp"
 #include "hep_partitioner.hpp"
@@ -8,7 +8,7 @@
 DECLARE_int32(k);
 DECLARE_bool(fastmerge);
 
-SmpPartitioner::SmpPartitioner(std::string basefilename)
+FsmPartitioner::FsmPartitioner(std::string basefilename)
     : basefilename(basefilename), writer(basefilename, FLAGS_write)
 {
     p = FLAGS_p;
@@ -18,7 +18,7 @@ SmpPartitioner::SmpPartitioner(std::string basefilename)
                 << ", p = " << p;
 
     total_time.start();
-    std::string split_method = FLAGS_method == "smp" ? "ne" : FLAGS_method.substr(4);
+    std::string split_method = FLAGS_method == "fsm" ? "ne" : FLAGS_method.substr(4);
     if (split_method == "ne") {
         split_partitioner = new NePartitioner(FLAGS_filename, true);
     } else if (split_method == "dbh") {
@@ -44,7 +44,7 @@ SmpPartitioner::SmpPartitioner(std::string basefilename)
     bucket_edge_cnt.assign(FLAGS_p, 0);
 };
 
-void SmpPartitioner::merge()
+void FsmPartitioner::merge()
 {
     size_t max_part_vertice_cnt = 0, all_part_vertice_cnt = 0; 
     for (int b = 0; b < p * k; ++ b) {
@@ -77,9 +77,9 @@ void SmpPartitioner::merge()
     std::unordered_map<int, int> valid_bucket;  // < old bucket, new bucket >
 
     if (FLAGS_fastmerge) {
-        valid_bucket = merge_by_size();
+        valid_bucket = fast_merge();
     } else {
-        valid_bucket = merge_by_overlap();
+        valid_bucket = precise_merge();
     }
     for (int b = 0; b < p * k; ++ b) 
         DLOG(INFO)   << "Bucket_info " << bucket_info[b].old_id 
@@ -107,7 +107,7 @@ void SmpPartitioner::merge()
     assigned_edges += curr_assigned_edges;
 }
 
-std::unordered_map<int, int> SmpPartitioner::merge_by_size()
+std::unordered_map<int, int> FsmPartitioner::fast_merge()
 {
     std::unordered_map<int, int> valid_bucket;  // < old bucket, new bucket >
     
@@ -140,7 +140,7 @@ std::unordered_map<int, int> SmpPartitioner::merge_by_size()
     return valid_bucket;
 }
 
-std::unordered_map<int, int> SmpPartitioner::merge_by_overlap()
+std::unordered_map<int, int> FsmPartitioner::precise_merge()
 {
     std::unordered_map<int, int> valid_bucket;  // < old bucket, new bucket >
 
@@ -196,7 +196,7 @@ std::unordered_map<int, int> SmpPartitioner::merge_by_overlap()
     return valid_bucket;
 }
 
-void SmpPartitioner::calculate_stats()
+void FsmPartitioner::calculate_stats()
 {
     std::cerr << std::string(25, '#') << " Calculating Statistics " << std::string(25, '#') << '\n';
     std::vector<size_t> bucket2vcnt(p, 0);
@@ -261,7 +261,7 @@ void SmpPartitioner::calculate_stats()
 }
 
 
-int SmpPartitioner::merge_bucket(int dst, int src, bool &has_intersection)   // dst, src
+int FsmPartitioner::merge_bucket(int dst, int src, bool &has_intersection)   // dst, src
 {
     auto &is_mirror_a = bucket_info[dst].is_mirror, &is_mirror_b = bucket_info[src].is_mirror;
     size_t mirror_cnt = 0;
@@ -279,7 +279,7 @@ int SmpPartitioner::merge_bucket(int dst, int src, bool &has_intersection)   // 
     return mirror_cnt;
 }
 
-void SmpPartitioner::split()
+void FsmPartitioner::split()
 {
     LOG(INFO) << "partition `" << basefilename << "'";
     LOG(INFO) << "number of partitions: " << p;
