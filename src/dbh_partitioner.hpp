@@ -13,7 +13,7 @@
 
 #include "util.hpp"
 #include "dense_bitset.hpp"
-#include "edgepart.hpp"
+#include "part_writer.hpp"
 #include "graph.hpp"
 #include "partitioner.hpp"
 
@@ -56,10 +56,6 @@ class DbhPartitioner : public Partitioner
             is_boundarys[bucket].set_bit_unsync(to);
         }
     }
-
-    // returns bucket id where score is best for edge (u,v)
-    inline int best_scored_partition(vid_t u, vid_t v, int edge_id) noexcept; 
-    inline double compute_partition_score(vid_t u, vid_t v, int bucket_id, int edge_id) noexcept;
 
     void calculate_stats();
 

@@ -15,7 +15,7 @@
 #include "util.hpp"
 #include "min_heap.hpp"
 #include "dense_bitset.hpp"
-#include "edgepart.hpp"
+#include "part_writer.hpp"
 #include "partitioner.hpp"
 #include "graph.hpp"
 

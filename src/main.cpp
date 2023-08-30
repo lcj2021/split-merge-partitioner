@@ -7,6 +7,7 @@
 #include "dbh_partitioner.hpp"
 #include "hdrf_partitioner.hpp"
 #include "hep_partitioner.hpp"
+#include "fennel_partitioner.hpp"
 #include "edgelist2adjlist.hpp"
 #include "vertex2edgepart.hpp"
 #include "test.hpp"
@@ -19,13 +20,13 @@ DEFINE_string(filename, "", "the file name of the input graph");
 DEFINE_string(filetype, "edgelist",
               "the type of input file (supports 'edgelist' and 'adjlist')");
 DEFINE_bool(write, false, "write out partition result");
-DEFINE_int32(k, 2, "the exact partitions count / remain partitions");
-DEFINE_bool(fastmerge, false, "whether use fast merge");
+DEFINE_int32(k, 1, "split factor, i.e. the exact partitions count / remain partitions");
+DEFINE_bool(fastmerge, false, "use fast merge?");
 DEFINE_string(method, "sne",
               "partition method: ne, sne, random, and dbh");
 
 DEFINE_bool(write_low_degree_edgelist, false, "Should the list of edges incident to a low-degree vertex be written out to a file?");
-DEFINE_double(hdf, 100, "High-degree factor: hdf * average_degree = high-degree threshold (hdth). Called \tau in the paper. Vertices with than hdth neighbors are treated specially in fast NE");
+DEFINE_double(hdf, 100, "High-degree factor: hdf * average_degree = high-degree threshold (hdth). Called \\tau in the paper. Vertices with than hdth neighbors are treated specially in fast NE");
 DEFINE_double(lambda, 1.1, "Lambda value to weigh in balancing score in streaming partitioning via HDRF");
 DEFINE_bool(extended_metrics, false, "Display extended metrics in the result");
 DEFINE_bool(random_streaming, false, "Use random streaming instead of HDRF in the second phase of HEP.");
@@ -61,11 +62,13 @@ int main(int argc, char *argv[])
         partitioner = new EbvPartitioner(FLAGS_filename, false);
     else if (FLAGS_method == "hep")
         partitioner = new HepPartitioner(FLAGS_filename, false);
+    else if (FLAGS_method == "fennel")
+        partitioner = new FennelPartitioner(FLAGS_filename, false);
     else if (FLAGS_method.substr(0, 3) == "fsm")
         partitioner = new FsmPartitioner(FLAGS_filename);
     else if (FLAGS_method == "e2a")
         partitioner = new Edgelist2Adjlist(FLAGS_filename);
-    else if (FLAGS_method == "v2e")
+    else if (FLAGS_method.substr(0, 3) == "v2e")
         partitioner = new Vertex2EdgePart(FLAGS_filename);
     else if (FLAGS_method == "test")
         partitioner = new Test(FLAGS_filename);

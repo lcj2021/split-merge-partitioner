@@ -15,8 +15,8 @@
 
 #include "vertex2edgepart.hpp"
 
-Vertex2EdgePart::Vertex2EdgePart(std::string basefilename) {
-	this->basefilename = basefilename + ".adjlist";
+Vertex2EdgePart::Vertex2EdgePart(std::string basefilename): rd(), gen(rd()) {
+	this->basefilename = basefilename;
     CHECK_NE(FLAGS_p, 0); p = FLAGS_p;
     CHECK_NE(FLAGS_k, 0); k = FLAGS_k;
 }
@@ -25,16 +25,19 @@ Vertex2EdgePart::~Vertex2EdgePart() {
 }
 
 void 
-Vertex2EdgePart::readVertexPartitioning() {
+Vertex2EdgePart::read_vertexpart() {
 	// open the partitioning file
 	// assumption: basefilename + ".part"
-	std::string partfilename = basefilename + ".part." + std::to_string(p * k); //METIS file name format
+    std::string partition_method = FLAGS_method.substr(4);
+	std::string partfilename = basefilename + ".vertexpart." + partition_method + "." + std::to_string(p * k); //METIS file name format
+
+    LOG(INFO) << partfilename;
 
     std::string line;
     std::ifstream partfile(partfilename);
     uint32_t current_vertex = 0;
     int result;
-    while(std::getline(partfile, line)){
+    while(std::getline(partfile, line)) {
         result = std::stoi(line);
         current_vertex++; // as in METIS format, first vertex id is 1, not 0!
         vertex2partition[current_vertex] = result;
@@ -43,7 +46,7 @@ Vertex2EdgePart::readVertexPartitioning() {
 }
 
 int 
-Vertex2EdgePart::findEdgePartition(vid_t u, vid_t v) {
+Vertex2EdgePart::vertex2edgepartID(vid_t u, vid_t v) {
 	int target_u = vertex2partition[u];
 	int target_v = vertex2partition[v];
 	if (u == v) {
@@ -223,94 +226,20 @@ Vertex2EdgePart::merge_bucket(int dst, int src, bool &has_intersection)   // dst
 
 void 
 Vertex2EdgePart::split() {
-    // read the metis adjacency list
-    FILE *fin = fopen(basefilename.c_str(), "r");
-    if (fin == NULL) {
-        LOG(FATAL) << "Could not load:" << basefilename
-                    << " error: " << strerror(errno) << std::endl;
+    if (!split_in_edgelist() && !split_in_adjlist()) {
+        LOG(FATAL) << "Read graph failed!";
     }
-    LOG(INFO) << "Reading in adjacency list format!" << std::endl;
-
-    int maxlen = 1000000000;
-    char *s = (char *)malloc(maxlen);
-
-    size_t bytesread = 0;
-
-    char delims[] = " \t";
-    size_t linenum = 0;
-
-    while (fgets(s, maxlen, fin) != NULL) {
-        linenum++;
-
-        FIXLINE(s);
-        bytesread += strlen(s);
-
-        if (s[0] == '#')
-            continue; // Comment
-        if (s[0] == '%')
-            continue; // Comment
-
-
-        if (linenum == 1) {
-            char *t = strtok(s, delims);
-            if (t == NULL)
-                LOG(FATAL) << "First line must contain num verts and num edges" << std::endl; // empty line
-
-            num_vertices = atoi(t);
-            t = strtok(NULL, delims);
-            if (t != NULL){
-                num_edges = atol(t);
-            } else {
-                LOG(FATAL) << "First line must contain num verts and num edges" << std::endl;
-            }
-            LOG(INFO) << "Vertices: " << num_vertices << ", Edges: " << num_edges << std::endl;
-
-            initDataStructures();
-            readVertexPartitioning();
-
-            continue; //done with first line
-        }
-
-        vid_t from = linenum - 1; // because first line contained the num of verts and edges
-        char *t = strtok(s, delims);
-        if (t == NULL)
-            continue;
-        t = strtok(NULL, delims);
-        do {
-            vid_t to = atoi(t);
-            if (from != to && from < to) { //ignore one direction, because METIS format contains both directions of an undirected edge
-                // int target_p = findEdgePartition(from, to);
-                // occupied[target_p]++;
-                // is_boundarys[target_p].set_bit_unsync(from);
-                // is_boundarys[target_p].set_bit_unsync(to);
-
-                // if (uv2edgeid.count(std::tuple(from, to))) {
-                //     LOG(FATAL) << "edge dulplicate!\n";
-                // }
-                // uv2edgeid[{from, to}] = curr_edge_cnt;
-                edges.emplace_back(edge_t(from, to));
-                int part_u = vertex2partition[from];
-                int part_v = vertex2partition[to];
-
-                bucket_info[part_u].is_mirror.set_bit_unsync(curr_edge_cnt);
-                bucket_info[part_v].is_mirror.set_bit_unsync(curr_edge_cnt);
-
-                curr_edge_cnt ++;
-            }
-        } while((t = strtok(NULL, delims)) != NULL);
-    }
-    free(s);
-    fclose(fin);
 
     merge();
     CHECK_EQ(assigned_vertices, num_vertices);
 
-    for (auto edge : edges) {
+    for (const auto &edge : edges) {
         vid_t from = edge.first, to = edge.second;
-        int target_p = findEdgePartition(from, to);
+        int target_p = vertex2edgepartID(from, to);
         occupied[target_p]++;
         is_boundarys[target_p].set_bit_unsync(from);
         is_boundarys[target_p].set_bit_unsync(to);
+        // from --, to --;
     }
 
 	calculate_stats();

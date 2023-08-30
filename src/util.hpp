@@ -90,7 +90,7 @@ inline std::string degree_name(const std::string &basefilename)
     return ss.str();
 }
 
-inline std::string partitioned_name(const std::string &basefilename)
+inline std::string edge_partitioned_name(const std::string &basefilename)
 {
     std::string ret = basefilename + ".edgepart.";
     if (FLAGS_method.substr(0, 3) == "fsm") {
@@ -101,6 +101,14 @@ inline std::string partitioned_name(const std::string &basefilename)
     } else {
         ret += FLAGS_method + ".";
     }
+    ret += std::to_string(FLAGS_p);
+    return ret;
+}
+
+inline std::string vertex_partitioned_name(const std::string &basefilename)
+{
+    std::string ret = basefilename + ".vertexpart.";
+    ret += FLAGS_method + ".";
     ret += std::to_string(FLAGS_p);
     return ret;
 }

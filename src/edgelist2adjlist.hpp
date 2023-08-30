@@ -13,7 +13,7 @@
 
 #include "util.hpp"
 #include "dense_bitset.hpp"
-#include "edgepart.hpp"
+#include "part_writer.hpp"
 #include "graph.hpp"
 #include "partitioner.hpp"
 #include "conversions.hpp"
