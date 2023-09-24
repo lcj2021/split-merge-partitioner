@@ -1,19 +1,7 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <iostream>
-#include <fstream>
-#include <random>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#include <parallel/algorithm>
-
 #include "util.hpp"
 #include "dense_bitset.hpp"
-#include "part_writer.hpp"
 #include "graph.hpp"
 #include "partitioner.hpp"
 #include "conversions.hpp"

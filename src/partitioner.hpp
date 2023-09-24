@@ -1,7 +1,6 @@
-#pragma once
+#ifndef PARTITIONER_HPP
+#define PARTITIONER_HPP
 
-#include <vector>
-#include "util.hpp"
 #include "dense_bitset.hpp"
 
 class Partitioner
@@ -18,3 +17,5 @@ class Partitioner
     std::vector<int16_t> edge2bucket;
     virtual void split() = 0;
 };
+
+#endif

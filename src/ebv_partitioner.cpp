@@ -1,6 +1,5 @@
-#include <utility>
+#include <numeric>
 
-#include "util.hpp"
 #include "ebv_partitioner.hpp"
 #include "conversions.hpp"
 

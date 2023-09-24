@@ -1,18 +1,10 @@
-#pragma once
+#ifndef FSM_PARTITIONER_HPP
+#define FSM_PARTITIONER_HPP
 
-#include <string>
-#include <vector>
-#include <iostream>
-#include <fstream>
 #include <random>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#include <queue>
+#include <memory>
 #include <unordered_map>
 
-#include "util.hpp"
 #include "min_heap.hpp"
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
@@ -24,7 +16,7 @@ class FsmPartitioner : public Partitioner
 {
   
   private:
-    Partitioner *split_partitioner;
+    std::unique_ptr<Partitioner> split_partitioner;
 
     std::string basefilename;
 
@@ -126,3 +118,5 @@ class FsmPartitioner : public Partitioner
     FsmPartitioner(std::string basefilename);
     void split();
 };
+
+#endif

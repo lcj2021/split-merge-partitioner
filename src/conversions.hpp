@@ -1,7 +1,5 @@
-#pragma once
-
-#include <string>
-#include <fstream>
+#ifndef CONVERSIONS_HPP
+#define CONVERSIONS_HPP
 
 #include <boost/unordered_map.hpp>
 
@@ -76,3 +74,5 @@ class Converter
 };
 
 void convert(std::string basefilename, Converter *converter);
+
+#endif

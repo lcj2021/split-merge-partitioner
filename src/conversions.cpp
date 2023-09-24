@@ -1,6 +1,5 @@
-#include <string.h>
-
 #include "conversions.hpp"
+#include "common.hpp"
 
 // Removes \n from the end of line
 void FIXLINE(char *s)

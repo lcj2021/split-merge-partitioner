@@ -1,6 +1,5 @@
-#include <utility>
+#include <numeric>
 
-#include "util.hpp"
 #include "dbh_partitioner.hpp"
 #include "conversions.hpp"
 

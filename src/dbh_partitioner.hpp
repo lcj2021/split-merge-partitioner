@@ -1,17 +1,6 @@
-#pragma once
+#ifndef DBH_PARTITIONER_HPP
+#define DBH_PARTITIONER_HPP
 
-#include <string>
-#include <vector>
-#include <iostream>
-#include <fstream>
-#include <random>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#include <parallel/algorithm>
-
-#include "util.hpp"
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
 #include "graph.hpp"
@@ -63,3 +52,5 @@ class DbhPartitioner : public Partitioner
     DbhPartitioner(std::string basefilename, bool need_k_split);
     void split();
 };
+
+#endif

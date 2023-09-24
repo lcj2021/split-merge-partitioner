@@ -1,8 +1,7 @@
-#pragma once
+#ifndef MIN_HEAP_HPP
+#define MIN_HEAP_HPP
 
-#include <vector>
-
-#include "util.hpp"
+#include "common.hpp"
 
 template<typename ValueType, typename KeyType, typename IdxType = vid_t>
 class MinHeap {
@@ -124,3 +123,5 @@ public:
         return (size_t) n;
     }
 };
+
+#endif

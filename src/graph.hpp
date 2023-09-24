@@ -1,9 +1,7 @@
-#pragma once
+#ifndef GRAPH_HPP
+#define GRAPH_HPP
 
-#include <vector>
-#include <parallel/algorithm>
-
-#include "util.hpp"
+#include "common.hpp"
 
 struct uint40_t {
         uint64_t v:40;
@@ -63,3 +61,5 @@ class graph_t
     adjlist_t &operator[](size_t idx) { return vdata[idx]; };
     const adjlist_t &operator[](size_t idx) const { return vdata[idx]; };
 };
+
+#endif

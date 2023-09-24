@@ -1,16 +1,6 @@
-#pragma once
+#ifndef TEST_HPP
+#define TEST_HPP
 
-#include <string>
-#include <vector>
-#include <iostream>
-#include <fstream>
-#include <random>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <unistd.h>
-
-#include "util.hpp"
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
 #include "partitioner.hpp"
@@ -40,3 +30,5 @@ class Test : public Partitioner
     Test(std::string basefilename);
     void split();
 };
+
+#endif

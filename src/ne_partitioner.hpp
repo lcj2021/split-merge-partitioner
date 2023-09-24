@@ -1,16 +1,8 @@
-#pragma once
+#ifndef NE_PARTITIONER_HPP
+#define NE_PARTITIONER_HPP
 
-#include <string>
-#include <vector>
-#include <iostream>
-#include <fstream>
 #include <random>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <unistd.h>
 
-#include "util.hpp"
 #include "min_heap.hpp"
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
@@ -188,3 +180,5 @@ class NePartitioner : public Partitioner
     NePartitioner(std::string basefilename, bool need_k_split);
     void split();
 };
+
+#endif

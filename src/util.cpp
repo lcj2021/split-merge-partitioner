@@ -4,8 +4,6 @@
 
 #include "util.hpp"
 
-threadpool11::Pool pool;
-
 void preada(int f, char *buf, size_t nbytes, size_t off)
 {
     size_t nread = 0;

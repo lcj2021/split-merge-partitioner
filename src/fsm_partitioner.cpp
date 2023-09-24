@@ -1,3 +1,5 @@
+#include <queue>
+
 #include "fsm_partitioner.hpp"
 #include "ne_partitioner.hpp"
 #include "hdrf_partitioner.hpp"
@@ -13,22 +15,22 @@ FsmPartitioner::FsmPartitioner(std::string basefilename)
 {
     p = FLAGS_p;
     k = FLAGS_k;
-    split_partitioner = NULL;
+    split_partitioner = nullptr;
     LOG(INFO) << "k = " << k
                 << ", p = " << p;
 
     total_time.start();
     std::string split_method = FLAGS_method == "fsm" ? "ne" : FLAGS_method.substr(4);
     if (split_method == "ne") {
-        split_partitioner = new NePartitioner(FLAGS_filename, true);
+        split_partitioner = std::make_unique<NePartitioner>(FLAGS_filename, true);
     } else if (split_method == "dbh") {
-        split_partitioner = new DbhPartitioner(FLAGS_filename, true);
+        split_partitioner = std::make_unique<DbhPartitioner>(FLAGS_filename, true);
     } else if (split_method == "ebv") {
-        split_partitioner = new EbvPartitioner(FLAGS_filename, true);
+        split_partitioner = std::make_unique<EbvPartitioner>(FLAGS_filename, true);
     } else if (split_method == "hdrf") {
-        split_partitioner = new HdrfPartitioner(FLAGS_filename, true);
+        split_partitioner = std::make_unique<HdrfPartitioner>(FLAGS_filename, true);
     } else if (split_method == "hep") {
-        split_partitioner = new HepPartitioner(FLAGS_filename, true);
+        split_partitioner = std::make_unique<HepPartitioner>(FLAGS_filename, true);
     } else {
         LOG(ERROR) << "Unknown split method!";
     }
@@ -308,7 +310,6 @@ void FsmPartitioner::split()
             compute_timer.start();
         }
     }
-    delete split_partitioner;
 
     std::cerr << "\n" << std::string(25, '#') << " Split phase end, Merge phase start " << std::string(25, '#') << "\n\n";
 

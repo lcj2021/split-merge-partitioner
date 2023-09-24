@@ -1,9 +1,5 @@
-#pragma once
-
-#include <string>
-#include <sstream>
-#include <iostream>
-#include <fstream>
+#ifndef PART_WRITER_HPP
+#define PART_WRITER_HPP
 
 #include "util.hpp"
 
@@ -52,3 +48,5 @@ struct vertexpart_writer {
         }
     }
 };
+
+#endif

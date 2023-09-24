@@ -1,17 +1,8 @@
-#pragma once
+#ifndef HDRF_PARTITIONER_HPP
+#define HDRF_PARTITIONER_HPP
 
-#include <string>
-#include <vector>
-#include <iostream>
-#include <fstream>
-#include <random>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#include <parallel/algorithm>
+#include <numeric>
 
-#include "util.hpp"
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
 #include "graph.hpp"
@@ -65,3 +56,5 @@ class HdrfPartitioner : public Partitioner
     HdrfPartitioner(std::string basefilename, bool need_k_split);
     void split();
 };
+
+#endif

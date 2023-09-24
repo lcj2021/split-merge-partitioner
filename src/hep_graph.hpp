@@ -1,13 +1,7 @@
-#pragma once
-#include <set>
+#ifndef HEP_GRAPH_HPP
+#define HEP_GRAPH_HPP
 
-#include <vector>
-#include <parallel/algorithm>
-
-#include <iostream>
-#include <fstream>
-#include <unordered_map>
-#include "util.hpp"
+#include "common.hpp"
 #include "dense_bitset.hpp"
 
 struct vid_eid_t {
@@ -109,3 +103,4 @@ public:
 
 };
 
+#endif

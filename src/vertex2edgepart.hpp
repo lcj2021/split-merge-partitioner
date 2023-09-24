@@ -1,18 +1,9 @@
-#pragma once
+#ifndef VERTEX2EDGEPART_HPP
+#define VERTEX2EDGEPART_HPP
 
-#include <string>
-#include <vector>
-#include <iostream>
-#include <fstream>
 #include <random>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#include <parallel/algorithm>
 #include <boost/unordered_map.hpp>
 
-#include "util.hpp"
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
 #include "partitioner.hpp"
@@ -232,3 +223,5 @@ public:
 	void split();
 
 };
+
+#endif

@@ -1,18 +1,8 @@
-#pragma once
+#ifndef HEP_PARTITIONER_HPP
+#define HEP_PARTITIONER_HPP
 
-#include <string>
-#include <vector>
-#include <iostream>
-#include <fstream>
 #include <random>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <unistd.h>
 
-#include <set>
-
-#include "util.hpp"
 #include "hep_min_heap.hpp"
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
@@ -278,3 +268,5 @@ class HepPartitioner : public Partitioner
 		num_vertices = numVertices;
 	}
 };
+
+#endif

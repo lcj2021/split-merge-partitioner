@@ -1,7 +1,7 @@
+#include <unordered_set>
+
 #include "test.hpp"
 #include "conversions.hpp"
-#include <unordered_set>
-#include <boost/container_hash/extensions.hpp>
 
 Test::Test(std::string basefilename)
     : basefilename(basefilename)

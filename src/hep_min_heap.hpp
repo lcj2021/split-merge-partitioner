@@ -1,8 +1,7 @@
-#pragma once
+#ifndef HEP_MIN_HEAP_HPP
+#define HEP_MIN_HEAP_HPP
 
-#include <vector>
-
-#include "util.hpp"
+#include "common.hpp"
 
 template<typename ValueType, typename KeyType, typename IdxType = vid_t>
 class HepMinHeap {
@@ -122,3 +121,5 @@ public:
     }
 
 };
+
+#endif

@@ -1,20 +1,15 @@
-#pragma once
+#ifndef DENSE_BITSET_HPP
+#define DENSE_BITSET_HPP
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <stdint.h>
-
-#include "util.hpp"
-
+#include "common.hpp"
 class dense_bitset
 {
   public:
     /// Constructs a bitset of 0 length
-    dense_bitset() : array(NULL), len(0), arrlen(0) {}
+    dense_bitset() : array(nullptr), len(0), arrlen(0) {}
 
     /// Constructs a bitset with 'size' bits. All bits will be cleared.
-    explicit dense_bitset(size_t size) : array(NULL), len(0), arrlen(0)
+    explicit dense_bitset(size_t size) : array(nullptr), len(0), arrlen(0)
     {
         resize(size);
         clear();
@@ -23,7 +18,7 @@ class dense_bitset
     /// Make a copy of the bitset db
     dense_bitset(const dense_bitset &db)
     {
-        array = NULL;
+        array = nullptr;
         len = 0;
         arrlen = 0;
         *this = db;
@@ -265,7 +260,7 @@ class dense_bitset
         typedef const size_t *pointer;
         size_t pos;
         const dense_bitset *db;
-        bit_pos_iterator() : pos(-1), db(NULL) {}
+        bit_pos_iterator() : pos(-1), db(nullptr) {}
         bit_pos_iterator(const dense_bitset *const db, size_t pos)
             : pos(pos), db(db)
         {
@@ -492,3 +487,5 @@ class dense_bitset
 
     template <int len> friend class fixed_dense_bitset;
 };
+
+#endif

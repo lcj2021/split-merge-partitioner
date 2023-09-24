@@ -1,6 +1,5 @@
-#include <string>
+#include <memory>
 
-#include "util.hpp"
 #include "ne_partitioner.hpp"
 #include "fsm_partitioner.hpp"
 #include "ebv_partitioner.hpp"
@@ -51,27 +50,27 @@ int main(int argc, char *argv[])
     Timer timer;
     timer.start();
 
-    Partitioner *partitioner = NULL;
+    std::unique_ptr<Partitioner> partitioner = nullptr;
     if (FLAGS_method == "ne")
-        partitioner = new NePartitioner(FLAGS_filename, false);
+        partitioner = std::make_unique<NePartitioner>(FLAGS_filename, false);
     else if (FLAGS_method == "dbh")
-        partitioner = new DbhPartitioner(FLAGS_filename, false);
+        partitioner = std::make_unique<DbhPartitioner>(FLAGS_filename, false);
     else if (FLAGS_method == "hdrf")
-        partitioner = new HdrfPartitioner(FLAGS_filename, false);
+        partitioner = std::make_unique<HdrfPartitioner>(FLAGS_filename, false);
     else if (FLAGS_method == "ebv")
-        partitioner = new EbvPartitioner(FLAGS_filename, false);
+        partitioner = std::make_unique<EbvPartitioner>(FLAGS_filename, false);
     else if (FLAGS_method == "hep")
-        partitioner = new HepPartitioner(FLAGS_filename, false);
+        partitioner = std::make_unique<HepPartitioner>(FLAGS_filename, false);
     else if (FLAGS_method == "fennel")
-        partitioner = new FennelPartitioner(FLAGS_filename, false);
+        partitioner = std::make_unique<FennelPartitioner>(FLAGS_filename, false);
     else if (FLAGS_method.substr(0, 3) == "fsm")
-        partitioner = new FsmPartitioner(FLAGS_filename);
+        partitioner = std::make_unique<FsmPartitioner>(FLAGS_filename);
     else if (FLAGS_method == "e2a")
-        partitioner = new Edgelist2Adjlist(FLAGS_filename);
+        partitioner = std::make_unique<Edgelist2Adjlist>(FLAGS_filename);
     else if (FLAGS_method.substr(0, 3) == "v2e")
-        partitioner = new Vertex2EdgePart(FLAGS_filename);
+        partitioner = std::make_unique<Vertex2EdgePart>(FLAGS_filename);
     else if (FLAGS_method == "test")
-        partitioner = new Test(FLAGS_filename);
+        partitioner = std::make_unique<Test>(FLAGS_filename);
     LOG(INFO) << "partition method: " << FLAGS_method;
     partitioner->split();
 

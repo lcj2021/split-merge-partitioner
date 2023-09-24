@@ -1,5 +1,8 @@
 release/
+build
 debug/
+dataset/webgraph
+dataset/snap
 *.pyc
 .DS_Store
 .git/

@@ -13,6 +13,9 @@
  *              of METIS under FLAGS_p partitions. 
  */
 
+#include <queue>
+#include <numeric>
+
 #include "vertex2edgepart.hpp"
 
 Vertex2EdgePart::Vertex2EdgePart(std::string basefilename): rd(), gen(rd()) {

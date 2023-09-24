@@ -1,8 +1,5 @@
 #include "hep_graph.hpp"
 #include "conversions.hpp"
-#include <iostream>
-#include <fstream>
-#include "util.hpp"
 
 // // // returns number of h2h edges
 // size_t mem_graph_t::stream_build(std::ifstream &fin, size_t num_edges, dense_bitset &is_high_degree, dense_bitset &has_high_degree_neighbor, std::vector<size_t> &count, bool write_low_degree_edgelist){

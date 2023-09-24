@@ -1,11 +1,10 @@
 cmake_minimum_required (VERSION 2.8)
-project (edgepart)
+project (FSM_partitioner)
 
 set(CMAKE_VERBOSE_MAKEFILE off)
 
 find_package (glog REQUIRED)
 find_package (gflags REQUIRED)
-# find_package (Boost REQUIRED)
 
 # SET a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE)
@@ -16,12 +15,9 @@ endif()
 
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Release" "Debug")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -std=c++17 -pthread -fopenmp")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -std=c++17")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_EXE_LINK_FLAGS_RELEASE} -Ofast ")
 # -DNDEBUG
-
-add_subdirectory(threadpool11)
-include_directories(./threadpool11/include)
 
 add_executable (main
     src/main.cpp
@@ -39,4 +35,4 @@ add_executable (main
     src/test.cpp
     src/conversions.cpp)
 
-target_link_libraries (main glog gflags threadpool11)
+target_link_libraries (main glog gflags)
