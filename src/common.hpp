@@ -28,7 +28,7 @@ DECLARE_bool(extended_metrics);
 DECLARE_bool(random_streaming);
 DECLARE_bool(hybrid_NE);
 
-typedef uint32_t vid_t;
+using vid_t = uint32_t;
 const vid_t INVALID_VID = -1;
 const vid_t offset = (vid_t)1 << 31;
 struct edge_with_id_t {

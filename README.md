@@ -10,13 +10,15 @@ cmake, glog, gflags, boost are required:
 `sudo apt-get install libgoogle-glog-dev libgflags-dev libboost-all-dev`
 
 ```sh
-mkdir release 
-cd release
+mkdir build 
+cd build
 cmake ..
 make -j 4
 ```
 
 ## Run
+
+### Prioritize Edge Balance
 
 Run with FSM-H (HEP-100) k=2, p=32
 
@@ -28,6 +30,17 @@ Run with FSM-N (NE) k=2, p=32
 
 ```shell
 ./main -p 32 -k 2 -method fsm_ne -filename ../../dataset/...
+```
+
+### Prioritize Vertex Balance
+
+```shell
+# -write true must be set
+./main -p 8 -method fennel -filename ../../dataset/hollywood-2011.txt -write true
+
+./main -p 8 -method e2a -filename ../../dataset/hollywood-2011.txt
+
+./main -p 8 -method v2e_fennel -filename ../../dataset/hollywood-2011.txt
 ```
 
 
