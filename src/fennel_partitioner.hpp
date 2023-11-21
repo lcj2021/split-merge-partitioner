@@ -48,8 +48,8 @@ class FennelPartitioner : public Partitioner
         writer.save_vertex(vid, bucket);
         is_boundarys[bucket].set_bit_unsync(vid);
         vertex2bucket[vid] = bucket;
-        vcount[bucket] += degrees[vid];
-        // vcount[bucket] += 1;
+        // vcount[bucket] += degrees[vid];
+        vcount[bucket] += 1;
         occupied[bucket] += additional_edges;
     }
 

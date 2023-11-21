@@ -3,6 +3,7 @@ build
 debug/
 dataset/webgraph
 dataset/snap
+cheatsheet
 *.pyc
 .DS_Store
 .git/

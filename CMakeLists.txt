@@ -2,6 +2,7 @@ cmake_minimum_required (VERSION 2.8)
 project (FSM_partitioner)
 
 set(CMAKE_VERBOSE_MAKEFILE off)
+set(CMAKE_CXX_STANDARD 17)
 
 find_package (glog REQUIRED)
 find_package (gflags REQUIRED)
@@ -19,6 +20,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -std=c++17")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_EXE_LINK_FLAGS_RELEASE} -Ofast ")
 # -DNDEBUG
 
+FIND_PACKAGE(OpenMP REQUIRED)
+INCLUDE_DIRECTORIES(${OpenMP_CXX_INCLUDE_DIRS})
+
 add_executable (main
     src/main.cpp
     src/util.cpp
@@ -31,8 +35,14 @@ add_executable (main
     src/dbh_partitioner.cpp
     src/hep_partitioner.cpp
     src/fennel_partitioner.cpp
+    src/bpart_partitioner.cpp
     src/vertex2edgepart.cpp
     src/test.cpp
     src/conversions.cpp)
 
-target_link_libraries (main glog gflags)
+target_link_libraries(
+    main 
+    glog 
+    gflags
+    OpenMP::OpenMP_CXX
+)

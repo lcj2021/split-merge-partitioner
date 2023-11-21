@@ -36,6 +36,7 @@ FennelPartitioner::FennelPartitioner(std::string basefilename, bool need_k_split
     }
 
     alpha = sqrt(p) * (double)num_edges / pow(num_vertices, 1.5);
+    // alpha = 1.5;
 
     adj_out.resize(num_vertices);
     adj_in.resize(num_vertices);
@@ -43,7 +44,8 @@ FennelPartitioner::FennelPartitioner(std::string basefilename, bool need_k_split
     occupied.assign(p, 0);
     vcount.assign(p, 0);
     vertex2bucket.assign(num_vertices, -1);
-    capacity = (double)num_edges * 2 * 1.05 / p + 1; //will be used to as stopping criterion later
+    // capacity = (double)num_edges * 2 * 1.05 / p + 1; //will be used to as stopping criterion later
+    capacity = (double)num_vertices * 1.1 / p + 1; //will be used to as stopping criterion later
     // capacity = 1e18; //will be used to as stopping criterion later
 
     edges.resize(num_edges);
@@ -66,7 +68,9 @@ void FennelPartitioner::split()
 {
     std::vector<vid_t> order(num_vertices);
     std::iota(order.begin(), order.end(), (vid_t)0);
-    // std::shuffle(order.begin(), order.end(), rd);
+    // std::mt19937 engine(123);
+    // std::shuffle(order.begin(), order.end(), engine);
+
     for (vid_t v = 0; v < num_vertices; ++ v) {
         vid_t vid = order[v];
         if (v % 5'000'000 == 0) {
@@ -80,7 +84,7 @@ void FennelPartitioner::split()
     LOG(INFO) << "total partition time: " << total_time.get_time();
     size_t total_cut_edges = 0;
     for (int i = 0; i < p; ++ i) {
-        LOG(INFO) << i << ' ' << is_boundarys[i].popcount() << ' ' << vcount[i] << ' ' << occupied[i];
+        LOG(INFO) << i << "\t" << is_boundarys[i].popcount() << "\t" << vcount[i] << "\t" << occupied[i];
         total_cut_edges += occupied[i];
     }
     double edge_cut_ratio = (double)(total_cut_edges - num_edges) / num_edges;

@@ -288,6 +288,8 @@ size_t mem_graph_t::stream_build(std::ifstream &fin, size_t num_edges, dense_bit
 
 	fin.seekg(sizeof(num_vertices) + sizeof(num_edges), std::ios::beg);
 	neighbors = (vid_eid_t *)realloc(neighbors, sizeof(vid_eid_t) * num_edges * 2); // store 2 vids for each edge
+    LOG(INFO) << sizeof(vid_eid_t) << " bytes needed for vid_eid_t";
+    LOG(INFO) << (double)(sizeof(vid_eid_t) * num_edges * 2 / 1024 / 1024 / 1024) << " G bytes needed for neighbors";
 	CHECK(neighbors) << "allocation failed!";
 
 	LOG(INFO) << "builder starts...";

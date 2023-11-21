@@ -69,6 +69,7 @@ class NePartitioner : public Partitioner
     void assign_edge(int bucket, vid_t from, vid_t to, size_t edge_id)
     {
         writer.save_edge(from, to, bucket);
+        CHECK_EQ(edge2bucket[edge_id], -1);
         edge2bucket[edge_id] = bucket;
         assigned_edges++;
         occupied[bucket]++;

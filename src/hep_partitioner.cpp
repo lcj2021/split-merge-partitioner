@@ -149,7 +149,6 @@ void HepPartitioner::load_in_memory(std::string basefilename, std::ifstream &fin
 	}
 	mem_graph.resize(num_vertices);
 	num_h2h_edges = mem_graph.stream_build(fin, num_edges, is_high_degree, has_high_degree_neighbor, count, write_low_degree_edgelist);
-	// num_h2h_edges = mem_graph.inmemory_build(fin, num_edges, is_high_degree, has_high_degree_neighbor, count, write_low_degree_edgelist, edges);
 	mem_graph.h2h_file.close(); //flushed
 	if (write_low_degree_edgelist){
 		mem_graph.low_degree_file.close(); //flushed
@@ -170,7 +169,10 @@ void HepPartitioner::in_memory_assign_remaining(){
 			for(; i < mem_graph[vid].size_out(); i++)
 			{
 				int target = best_scored_partition(vid, neighbors[i].vid);
-				assign_edge(target, vid, neighbors[i].vid, neighbors[i].eid);
+				bool ok = assign_edge(target, vid, neighbors[i].vid, neighbors[i].eid);
+                if (!ok) {
+                    LOG(INFO) << "Could not assign edge " << vid << " " << neighbors[i].vid << std::endl;
+                }
 			}
 
 			// in case the vertex has high degree neighbors, the edges from
@@ -181,7 +183,10 @@ void HepPartitioner::in_memory_assign_remaining(){
 				{
 					if (is_high_degree.get(neighbors[i].vid)){
 						int target = best_scored_partition(neighbors[i].vid, vid);
-						assign_edge(target, neighbors[i].vid, vid, neighbors[i].eid);
+						bool ok = assign_edge(target, neighbors[i].vid, vid, neighbors[i].eid);
+                        if (!ok) {
+                            LOG(INFO) << "Could not assign edge " << vid << " " << neighbors[i].vid << std::endl;
+                        }
 					}
 				}
 

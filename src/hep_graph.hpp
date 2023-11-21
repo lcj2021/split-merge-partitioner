@@ -5,8 +5,9 @@
 #include "dense_bitset.hpp"
 
 struct vid_eid_t {
-    vid_t vid, eid;
-    vid_eid_t(vid_t vid, vid_t eid) : vid(vid), eid(eid) {}
+    vid_t vid;
+    size_t eid;
+    vid_eid_t(vid_t vid, size_t eid) : vid(vid), eid(eid) {}
 } __attribute__((packed)) ;
 
 /*

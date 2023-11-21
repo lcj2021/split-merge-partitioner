@@ -33,7 +33,7 @@ const vid_t INVALID_VID = -1;
 const vid_t offset = (vid_t)1 << 31;
 struct edge_with_id_t {
     vid_t first, second;
-    vid_t eid;
+    size_t eid;
     edge_with_id_t() : first(0), second(0), eid(0) {}
     edge_with_id_t(vid_t first, vid_t second, vid_t eid) : first(first), second(second), eid(eid) {}
 };

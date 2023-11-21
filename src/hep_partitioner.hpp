@@ -57,18 +57,22 @@ class HepPartitioner : public Partitioner
     void in_memory_clean_up_neighbors(vid_t vid, dense_bitset & is_core, dense_bitset & is_boundary);
 
     std::vector<bool> assigned;
-    void assign_edge(int cbucket, vid_t from, vid_t to, vid_t edge_id)
+    bool assign_edge(int cbucket, vid_t from, vid_t to, size_t edge_id)
     {        
+        if (assigned[edge_id]) return false;
         assigned[edge_id] = true;
+
         writer.save_edge(from, to, cbucket);
         assigned_edges++;
         occupied[cbucket]++;
-        CHECK_EQ(edge2bucket[edge_id], -1);
+        // CHECK_EQ(edge2bucket[edge_id], -1);
+        // if (edge2bucket[edge_id] != -1) return false;
         edge2bucket[edge_id] = cbucket;
 
         is_boundarys[cbucket].set_bit_unsync(from);
         is_boundarys[cbucket].set_bit_unsync(to);
 
+        return true;
     }
 
     void in_memory_add_boundary(vid_t vid){
