@@ -62,6 +62,14 @@ NePartitioner::NePartitioner(std::string basefilename, bool need_k_split)
     degree_file.close();
     read_timer.stop();
     LOG(INFO) << "time used for graph input and construction: " << read_timer.get_time();
+
+    size_t num_out_edges = 0;
+    for (vid_t vid = 0; vid < num_vertices; ++vid) {
+        num_out_edges += adj_out[vid].size();
+    }
+    LOG(INFO) << "num_out_edges: " << num_out_edges;
+    LOG(INFO) << "num_edges: " << num_edges;
+    CHECK_EQ(num_out_edges, num_edges);
 };
 
 void NePartitioner::assign_remaining()

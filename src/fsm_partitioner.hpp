@@ -11,7 +11,7 @@
 #include "partitioner.hpp"
 #include "graph.hpp"
 
-/* SplitMerge Partitioner (SMP) */
+/* Fine-grained SplitMerge Partitioner (FSM) */
 class FsmPartitioner : public Partitioner
 {
   
@@ -25,21 +25,21 @@ class FsmPartitioner : public Partitioner
 
     std::vector<size_t> bucket_edge_cnt;
 
-    struct bucket_info_item {
+    struct BucketInfo {
         dense_bitset is_mirror;
         size_t occupied, old_id, replicas;
         bool is_chosen;
-        bucket_info_item(vid_t num_vertices) {
+        BucketInfo(vid_t num_vertices) {
             is_mirror = dense_bitset(num_vertices);
             old_id = occupied = replicas = 0;
             is_chosen = false;
         }
-        bool operator < (const bucket_info_item& rhs) const {
+        bool operator < (const BucketInfo& rhs) const {
             if (is_chosen != rhs.is_chosen) return is_chosen > rhs.is_chosen;
             return old_id < rhs.old_id;
         }
     };
-    std::vector<bucket_info_item> bucket_info;
+    std::vector<BucketInfo> bucket_info;
 
     edgepart_writer<vid_t, uint16_t> writer;
     

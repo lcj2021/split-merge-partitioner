@@ -38,7 +38,7 @@ FsmPartitioner::FsmPartitioner(std::string basefilename)
     num_vertices = split_partitioner->num_vertices;
     num_edges = split_partitioner->num_edges;
 
-    bucket_info.assign(k * p, bucket_info_item(num_vertices));
+    bucket_info.assign(k * p, BucketInfo(num_vertices));
     for (int i = 0; i < k * p; ++ i) bucket_info[i].old_id = i;
 
     edge2bucket.assign(num_edges, -1);
@@ -70,7 +70,7 @@ void FsmPartitioner::merge()
     // }
 
     std::sort(bucket_info.begin(), bucket_info.end(), 
-        [&](const bucket_info_item &l, const bucket_info_item &r) {
+        [&](const BucketInfo &l, const BucketInfo &r) {
         return l.replicas > r.replicas;
     });
 

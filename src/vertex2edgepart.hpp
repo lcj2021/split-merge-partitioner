@@ -29,21 +29,21 @@ private:
     boost::unordered_map<std::tuple<vid_t, vid_t>, size_t> uv2edgeid;
     size_t curr_edge_cnt;
 
-    struct bucket_info_item {
+    struct BucketInfo {
         dense_bitset is_mirror;
         size_t occupied, old_id, replicas;
         bool is_chosen;
-        bucket_info_item(vid_t num_edges) {
+        BucketInfo(vid_t num_edges) {
             is_mirror = dense_bitset(num_edges);
             old_id = occupied = replicas = 0;
             is_chosen = false;
         }
-        bool operator < (const bucket_info_item& rhs) const {
+        bool operator < (const BucketInfo& rhs) const {
             if (is_chosen != rhs.is_chosen) return is_chosen > rhs.is_chosen;
             return old_id < rhs.old_id;
         }
     };
-    std::vector<bucket_info_item> bucket_info;
+    std::vector<BucketInfo> bucket_info;
 
     // Removes \n from the end of line
     void FIXLINE(char *s)
@@ -59,7 +59,7 @@ private:
     	is_boundarys.resize(p * k, dense_bitset(num_vertices + 1));
         occupied.assign(p * k, 0);
 
-        bucket_info.assign(p * k, bucket_info_item(num_edges));
+        bucket_info.assign(p * k, BucketInfo(num_edges));
         for (int i = 0; i < p * k; ++ i) bucket_info[i].old_id = i;
     }
 

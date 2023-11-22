@@ -75,7 +75,7 @@ Vertex2EdgePart::merge() {
     }
 
     std::sort(bucket_info.begin(), bucket_info.end(), 
-        [&](const bucket_info_item &l, const bucket_info_item &r) {
+        [&](const BucketInfo &l, const BucketInfo &r) {
         return l.replicas > r.replicas;
     });
 
