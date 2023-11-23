@@ -36,7 +36,7 @@ class HepPartitioner : public Partitioner
     bool write_low_degree_edgelist = false; // whether edges incident to a low-degree vertex should be written out to a file. useful if this sub-graph should be analyzed separately.
 
     // std::vector<edge_t> edges;
-    mem_graph_t mem_graph; // graph for in-memory processing
+    mem_graph_t<vid_eid_t> mem_graph; // graph for in-memory processing
     double high_degree_factor;
     HepMinHeap<vid_t, vid_t> min_heap;
     // std::vector<size_t> occupied;
@@ -44,7 +44,7 @@ class HepPartitioner : public Partitioner
     dense_bitset is_in_a_core;
     dense_bitset is_high_degree;
     dense_bitset has_high_degree_neighbor;
-    std::vector<size_t> count; // degrees of vertices//(num_vertices, 0);
+    std::vector<size_t> degrees; // degrees of vertices//(num_vertices, 0);
 
 
     vid_t search_index_free_vertex = 0;

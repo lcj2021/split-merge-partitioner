@@ -33,7 +33,7 @@ HepPartitioner::HepPartitioner(std::string basefilename, bool need_k_split) // @
         p *= FLAGS_k;
     }
 
-    count.resize(num_vertices, 0);
+    degrees.resize(num_vertices, 0);
 
     // p = FLAGS_p; //number of partitions. Value comes from console
     lambda = FLAGS_lambda; //for weighing in balancing score in streaming
@@ -89,17 +89,17 @@ void HepPartitioner::compute_stats()
 	vid_t vertex_count_C = 0, vertex_count_S = 0;
 	vid_t max_degree = 0;
 	for (vid_t i = 0; i < num_vertices; i++) {
-		if (count[i] > max_degree) {
-			max_degree = count[i];
+		if (degrees[i] > max_degree) {
+			max_degree = degrees[i];
 		}
 		if (is_in_a_core.get(i)) {
-			total_degree_C += count[i];
+			total_degree_C += degrees[i];
 			vertex_count_C++;
 		}
 		else{ // for those not in core, check whether they are in the boundary of any of the first k-1 partitions (the last partition is not built based on expansion)
 			for (int j = 0; j < p-1; j++) {
 				if (is_boundarys[j].get(i)) {
-					total_degree_S += count[i];
+					total_degree_S += degrees[i];
 					vertex_count_S++;
 					break;
 				}
@@ -123,7 +123,7 @@ void HepPartitioner::compute_stats()
 				rep_factor++;
 			}
 		}
-		vid_t degree = count[i];
+		vid_t degree = degrees[i];
 		replication_factor_per_vertex_degree[degree] += rep_factor;
 		num_vertices_per_vertex_degree[degree]++;
 	}
@@ -155,14 +155,15 @@ void HepPartitioner::compute_stats()
 
 }
 
-void HepPartitioner::load_in_memory(std::string basefilename, std::ifstream &fin) {
+void HepPartitioner::load_in_memory(std::string basefilename, std::ifstream &fin) 
+{
 	mem_graph.high_degree_factor = high_degree_factor;
 	mem_graph.h2h_file.open(h2hedgelist_name(basefilename), std::ios_base::binary | std::ios_base::out ); // *.h2h_edgelist file
 	if (write_low_degree_edgelist) {
 		mem_graph.low_degree_file.open(lowedgelist_name(basefilename), std::ios_base::binary | std::ios_base::out ); // *.low_edgelist file;
 	}
 	mem_graph.resize(num_vertices);
-	num_h2h_edges = mem_graph.stream_build(fin, num_edges, is_high_degree, has_high_degree_neighbor, count, write_low_degree_edgelist);
+	num_h2h_edges = mem_graph.stream_build(fin, num_edges, is_high_degree, has_high_degree_neighbor, degrees, write_low_degree_edgelist);
 	mem_graph.h2h_file.close(); //flushed
 	if (write_low_degree_edgelist) {
 		mem_graph.low_degree_file.close(); //flushed
@@ -170,7 +171,8 @@ void HepPartitioner::load_in_memory(std::string basefilename, std::ifstream &fin
 }
 
 
-void HepPartitioner::in_memory_assign_remaining() {
+void HepPartitioner::in_memory_assign_remaining() 
+{
 
 	LOG(INFO) << "Assigned edges before assign_remaining: " << assigned_edges << std::endl;
 
@@ -184,6 +186,7 @@ void HepPartitioner::in_memory_assign_remaining() {
 			{
 				int target = best_scored_partition(vid, neighbors[i].vid);
 				bool ok = assign_edge(target, vid, neighbors[i].vid, neighbors[i].eid);
+				ok = assign_edge_new(target, vid, neighbors[i]);
                 if (!ok) {
                     LOG(INFO) << "Could not assign edge " << vid << " " << neighbors[i].vid << std::endl;
                 }
@@ -198,6 +201,7 @@ void HepPartitioner::in_memory_assign_remaining() {
 					if (is_high_degree.get(neighbors[i].vid)) {
 						int target = best_scored_partition(neighbors[i].vid, vid);
 						bool ok = assign_edge(target, neighbors[i].vid, vid, neighbors[i].eid);
+                        ok = assign_edge_new(target, neighbors[i].vid, neighbors[i]);
                         if (!ok) {
                             LOG(INFO) << "Could not assign edge " << vid << " " << neighbors[i].vid << std::endl;
                         }
@@ -267,7 +271,6 @@ void HepPartitioner::in_memory_assign_remaining() {
 
 void HepPartitioner::hdrf_streaming()
 {
-
 	LOG(INFO) << "Streaming using HDRF algorithm." << std::endl;
 	// assign the edges between two high degree vertices
 
@@ -298,8 +301,6 @@ void HepPartitioner::hdrf_streaming()
 			bucket = best_scored_partition(tmp_edges[i].first, tmp_edges[i].second); // according to HDRF scoring
 
 			assign_edge(bucket, tmp_edges[i].first, tmp_edges[i].second, tmp_edges[i].eid);
-			// is_boundarys[bucket].set_bit_unsync(tmp_edges[i].first);
-			// is_boundarys[bucket].set_bit_unsync(tmp_edges[i].second);
 
 			if (occupied[bucket] > max_size) {
 				max_size = occupied[bucket];
@@ -352,10 +353,9 @@ size_t HepPartitioner::count_mirrors()
 }
 
 
-
 void HepPartitioner::in_memory_clean_up_neighbors(vid_t vid, dense_bitset & is_core, dense_bitset & is_boundary) 
 {
-	mem_adjlist_t &neighbors = mem_graph[vid];
+	mem_adjlist_t<vid_eid_t> &neighbors = mem_graph[vid];
 
 	const size_t num_neigh_out = neighbors.size_out();
 	const size_t num_neigh_size = neighbors.size();
@@ -397,8 +397,8 @@ void HepPartitioner::in_memory_clean_up_neighbors(vid_t vid, dense_bitset & is_c
 }
 
 
-void HepPartitioner::partition_in_memory() {
-
+void HepPartitioner::partition_in_memory() 
+{
 	bool expansion_finished = false;
 
     for (bucket = 0; bucket < p - 1; bucket++) {
@@ -473,13 +473,14 @@ void HepPartitioner::partition_in_memory() {
 }
 
 
-double HepPartitioner::compute_partition_score(vid_t u, vid_t v, int bucket_id) {
+double HepPartitioner::compute_partition_score(vid_t u, vid_t v, int bucket_id) 
+{
 	if (occupied[bucket_id] >= capacity) {
-//		cout << "partition " << bucket_id << " is full with " << occupied[bucket_id] << endl;
+		// cout << "partition " << bucket_id << " is full with " << occupied[bucket_id] << endl;
 		return -1.0; // partition is full, do not choose it
 	}
-	size_t degree_u = count[u];
-	size_t degree_v = count[v];
+	size_t degree_u = degrees[u];
+	size_t degree_v = degrees[v];
 	size_t sum = degree_u + degree_v;
 	double gu = 0.0, gv = 0.0;
 	if (is_boundarys[bucket_id].get(u)) {
@@ -499,7 +500,8 @@ double HepPartitioner::compute_partition_score(vid_t u, vid_t v, int bucket_id) 
 	return score;
 }
 
-int HepPartitioner::best_scored_partition(vid_t u, vid_t v) {
+int HepPartitioner::best_scored_partition(vid_t u, vid_t v) 
+{
 	double best_score = -1.0;
 	int best_partition = 0;
 	for (int i = 0; i < p; i++) {
@@ -550,6 +552,26 @@ void HepPartitioner::split()
     total_time.stop();
     LOG(INFO) << "total partition time: " << total_time.get_time();
 
+    size_t num_neighbors = 0, num_assigned_neighbors = 0;
+    for (vid_t from = 0, offset = 0; from < num_vertices; ++from) {
+        if (degrees[from] > mem_graph.high_degree_threshold) continue;
+        for (size_t i = 0; i < degrees[from]; ++i) {
+            const auto& to = mem_graph.neighbors[offset + i];
+            if (to.bid != std::numeric_limits<uint16_t>::max()) {
+                ++ num_assigned_neighbors;
+            }
+            ++ num_neighbors;
+        }
+        offset += degrees[from];
+    }
+    LOG(INFO) << "num_neighbors: " << num_neighbors;
+    LOG(INFO) << "num_assigned_neighbors: " << num_assigned_neighbors;
+    LOG(INFO) << "num_h2h_edges: " << num_h2h_edges;
+
+    // std::ofstream out("hep_ok");
+    // for (auto& x : count) {
+    //     out << x << std::endl;
+    // }
 
     /*
      * compute some stats about the partitioned graph (for further analysis)

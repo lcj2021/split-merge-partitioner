@@ -87,6 +87,10 @@ void DbhPartitioner::split()
     for (int i = 0; i < p; ++ i) {
         LOG(INFO) << i << ' ' << is_boundarys[i].popcount() << ' ' << occupied[i];
     }
+    // std::ofstream out("dbh_ok");
+    // for (auto& x : degrees) {
+    //     out << x << std::endl;
+    // }
     calculate_stats();
 }
 

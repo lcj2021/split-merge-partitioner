@@ -14,7 +14,7 @@ class Partitioner
     vid_t num_vertices;
     size_t num_edges;
     std::vector<edge_t> edges;
-    std::vector<int16_t> edge2bucket;
+    std::vector<uint16_t> edge2bucket;
     virtual void split() = 0;
 };
 

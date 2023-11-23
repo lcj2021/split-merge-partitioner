@@ -47,7 +47,7 @@ class FsmPartitioner : public Partitioner
     {
         size_t curr_assigned_edges = 0;
         for (size_t edge_id = 0; edge_id < e.size(); ++ edge_id) {
-            int16_t &edge_bucket = edge2bucket[edge_id];
+            auto &edge_bucket = edge2bucket[edge_id];
             e[edge_id].recover();
             if (valid_bucket.count(edge_bucket)) {
                 edge_bucket = valid_bucket.at(edge_bucket);
