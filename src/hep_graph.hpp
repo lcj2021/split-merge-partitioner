@@ -6,10 +6,9 @@
 
 struct vid_eid_t {
     vid_t vid;
-    size_t eid;
-    uint16_t bid;
-    vid_eid_t(vid_t vid, size_t eid) : vid(vid), eid(eid), bid(std::numeric_limits<uint16_t>::max()) {}
-    vid_eid_t(vid_t vid, size_t eid, uint16_t bid) : vid(vid), eid(eid), bid(bid) {}
+    bid_t bid;
+    vid_eid_t(vid_t vid, bid_t bid) : vid(vid), bid(bid) {}
+    vid_eid_t(vid_t vid) : vid(vid), bid(kInvalidBid) {}
 } __attribute__((packed)) ;
 
 /*
@@ -25,7 +24,7 @@ public:
 
 public:
 
-    mem_adjlist_t() :   adj(NULL), len_out(0), len_in(0) {}
+    mem_adjlist_t() : adj(NULL), len_out(0), len_in(0) {}
     mem_adjlist_t( TAdj *adj) :  adj(adj), len_out(0), len_in(0) {}
 
     TAdj *begin() { return adj; }
@@ -74,6 +73,8 @@ public:
     void pop_back_in(){len_in--;}
 };
 
+template class mem_adjlist_t<vid_eid_t>;
+
 /*
  * in-memory graph
  */
@@ -94,6 +95,32 @@ public:
 
 public:
     mem_graph_t() : num_vertices(0), nedges(0), neighbors(NULL), high_degree_factor(0), high_degree_threshold(0), num_h2h_edges(0) {  }
+
+    mem_graph_t(mem_graph_t&& other) noexcept
+        : num_vertices(std::exchange(other.num_vertices, 0)),
+          nedges(std::exchange(other.nedges, 0)),
+          neighbors(std::exchange(other.neighbors, nullptr)),
+          vdata(std::move(other.vdata)),
+          high_degree_factor(std::exchange(other.high_degree_factor, 0)),
+          high_degree_threshold(std::exchange(other.high_degree_threshold, 0)),
+          h2h_file(std::move(other.h2h_file)),
+          low_degree_file(std::move(other.low_degree_file)),
+          num_h2h_edges(std::exchange(other.num_h2h_edges, 0)) {
+    }
+
+    mem_graph_t& operator=(mem_graph_t&& other) noexcept 
+    {
+        num_vertices = std::exchange(other.num_vertices, 0);
+        nedges = std::exchange(other.nedges, 0);
+        neighbors = std::exchange(other.neighbors, nullptr);
+        vdata = std::move(other.vdata);
+        high_degree_factor = std::exchange(other.high_degree_factor, 0);
+        high_degree_threshold = std::exchange(other.high_degree_threshold, 0);
+        h2h_file = std::move(other.h2h_file);
+        low_degree_file = std::move(other.low_degree_file);
+        num_h2h_edges = std::exchange(other.num_h2h_edges, 0);
+        return *this;
+    }
 
     ~mem_graph_t()
     {
@@ -124,6 +151,6 @@ public:
 
 };
 
-
 template class mem_graph_t<vid_eid_t>;
+
 #endif

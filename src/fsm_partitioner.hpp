@@ -10,18 +10,22 @@
 #include "part_writer.hpp"
 #include "partitioner.hpp"
 #include "graph.hpp"
+#include "hep_graph.hpp"
 
 /* Fine-grained SplitMerge Partitioner (FSM) */
 class FsmPartitioner : public Partitioner
 {
   
-  private:
+private:
     std::unique_ptr<Partitioner> split_partitioner;
+    std::string split_method;
 
     std::string basefilename;
 
     size_t assigned_edges;
     int p, k;
+
+    // mem_graph_t<vid_eid_t> mem_graph;
 
     std::vector<size_t> bucket_edge_cnt;
 
@@ -59,6 +63,76 @@ class FsmPartitioner : public Partitioner
             }
         }
         return curr_assigned_edges;
+    }
+
+    size_t rearrange_edge_hybrid(const std::unordered_map<int, int> &valid_bucket)
+    {
+
+        LOG(INFO) << "In-memory rearrange edges (adjlist in memory)";
+        size_t num_adjlist_edges = 0;
+        size_t offset = 0;
+        for (vid_t from = 0; from < num_vertices; ++from) {
+            if (degrees[from] > mem_graph.high_degree_threshold) continue;
+            for (size_t i = 0; i < degrees[from]; ++i) {
+                auto& to = mem_graph.neighbors[offset + i];
+                auto& edge_bucket = reinterpret_cast<uint16_t&>(to.bid);
+                if (edge_bucket == kInvalidBid) {
+                    continue;
+                }
+                if (valid_bucket.count(edge_bucket)) {
+                    edge_bucket = valid_bucket.at(edge_bucket);
+                    bucket_edge_cnt[edge_bucket] ++;
+                    num_adjlist_edges++;
+                } else {
+                    LOG(FATAL) << "bucket: " << edge_bucket 
+                            << ", should not be left in the final round\n";
+                }
+            }
+            offset += degrees[from];
+        }
+
+        LOG(INFO) << "Streamingly rearrange edges (edgelist on disk)";
+        size_t num_edgelist_edges = 0;
+
+        mem_graph.h2h_file.open(h2hedgelist_name(basefilename), std::ios_base::binary | std::ios_base::in);
+        mem_graph.h2h_file.seekg(0, std::ios::beg);
+
+        std::vector<edge_with_id_t> stream_edges; // temporary buffer to read edges from file
+        size_t chunk_size;
+        size_t left_h2h_edges = mem_graph.num_h2h_edges;
+        size_t id_h2h_edges = 0;
+
+        if (left_h2h_edges >= 100000) {
+            chunk_size = 100000; // batch read of so many edges
+        } else {
+            chunk_size = left_h2h_edges;
+        }
+        stream_edges.resize(chunk_size);
+
+        while (left_h2h_edges > 0) { // edges to be read
+            mem_graph.h2h_file.read((char *)&stream_edges[0], sizeof(edge_with_id_t) * chunk_size);
+            for (size_t i = 0; i < chunk_size; i++) {
+                auto &edge_bucket = edgelist2bucket[id_h2h_edges++];
+                if (valid_bucket.count(edge_bucket)) {
+                    edge_bucket = valid_bucket.at(edge_bucket);
+                    bucket_edge_cnt[edge_bucket] ++;
+                    num_edgelist_edges++;
+                } else {
+                    LOG(FATAL) << "bucket: " << edge_bucket << ", should not be left in the final round\n";
+                }
+            }
+
+            left_h2h_edges -= chunk_size;
+            if (left_h2h_edges < chunk_size) { // adapt chunk size for last batch read
+                chunk_size = left_h2h_edges;
+            }
+        }
+        mem_graph.h2h_file.close();
+
+        LOG(INFO) << "num_adjlist_edges: " << num_adjlist_edges;
+        LOG(INFO) << "num_edgelist_edges: " << num_edgelist_edges;
+
+        return num_adjlist_edges + num_edgelist_edges;
     }
 
     bool check_edge()
@@ -114,7 +188,7 @@ class FsmPartitioner : public Partitioner
     std::unordered_map<int, int> fast_merge();
     std::unordered_map<int, int> precise_merge();
 
-  public:
+public:
     FsmPartitioner(std::string basefilename);
     void split();
 };

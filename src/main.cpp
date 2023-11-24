@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     else if (FLAGS_method == "ebv")
         partitioner = std::make_unique<EbvPartitioner>(FLAGS_filename, false);
     else if (FLAGS_method == "hep")
-        partitioner = std::make_unique<HepPartitioner>(FLAGS_filename, false);
+        partitioner = std::make_unique<HepPartitioner<vid_eid_t>>(FLAGS_filename, false);
     else if (FLAGS_method == "fennel")
         partitioner = std::make_unique<FennelPartitioner>(FLAGS_filename, false);
     else if (FLAGS_method == "bpart")

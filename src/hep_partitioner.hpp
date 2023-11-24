@@ -10,14 +10,14 @@
 #include "hep_graph.hpp"
 
 /* Hybrid Edge Partitioner (HEP) */
+template <typename TAdj>
 class HepPartitioner : public Partitioner
 {
-  private:
+private:
     const double BALANCE_RATIO = 1.0;
     double lambda;
     bool extended_metrics;
 
-    bool two_ps; // whether to use 2ps restreaming for the second phase of HEP
     bool stream_random; // whether to use random streaming for the second phase of HEP
 
     std::string basefilename;
@@ -36,7 +36,7 @@ class HepPartitioner : public Partitioner
     bool write_low_degree_edgelist = false; // whether edges incident to a low-degree vertex should be written out to a file. useful if this sub-graph should be analyzed separately.
 
     // std::vector<edge_t> edges;
-    mem_graph_t<vid_eid_t> mem_graph; // graph for in-memory processing
+    // mem_graph_t<TAdj> mem_graph; // graph for in-memory processing
     double high_degree_factor;
     HepMinHeap<vid_t, vid_t> min_heap;
     // std::vector<size_t> occupied;
@@ -44,7 +44,7 @@ class HepPartitioner : public Partitioner
     dense_bitset is_in_a_core;
     dense_bitset is_high_degree;
     dense_bitset has_high_degree_neighbor;
-    std::vector<size_t> degrees; // degrees of vertices//(num_vertices, 0);
+    // std::vector<size_t> degrees; // degrees of vertices//(num_vertices, 0);
 
 
     vid_t search_index_free_vertex = 0;
@@ -57,39 +57,56 @@ class HepPartitioner : public Partitioner
     void in_memory_clean_up_neighbors(vid_t vid, dense_bitset & is_core, dense_bitset & is_boundary);
 
     std::vector<bool> assigned;
-    bool assign_edge_new(int cbucket, vid_t from, vid_eid_t& v_e)
+    bool assign_edge_new(int cbucket, vid_t from, TAdj& v_e)
     {        
-        auto& [to, eid, bid] = v_e;
+        // auto& [to, eid, bid] = v_e;
         // if (assigned[edge_id]) return false;
         // assigned[edge_id] = true;
 
         // writer.save_edge(from, to, cbucket);
-        // assigned_edges++;
-        // occupied[cbucket]++;
+        assigned_edges++;
+        occupied[cbucket]++;
 
         // CHECK_EQ(edge2bucket[edge_id], -1);
         // if (edge2bucket[edge_id] != -1) return false;
         // edge2bucket[edge_id] = cbucket;
 
-        bid = cbucket;
+        v_e.bid = cbucket;
 
         is_boundarys[cbucket].set_bit_unsync(from);
-        is_boundarys[cbucket].set_bit_unsync(to);
+        is_boundarys[cbucket].set_bit_unsync(v_e.vid);
 
         return true;
     }
 
+    // bool assign_edge(int cbucket, vid_t from, vid_t to, size_t edge_id)
+    // {        
+    //     if (assigned[edge_id]) return false;
+    //     assigned[edge_id] = true;
+
+    //     writer.save_edge(from, to, cbucket);
+    //     assigned_edges++;
+    //     occupied[cbucket]++;
+    //     // CHECK_EQ(edge2bucket[edge_id], -1);
+    //     // if (edge2bucket[edge_id] != -1) return false;
+    //     edge2bucket[edge_id] = cbucket;
+
+    //     is_boundarys[cbucket].set_bit_unsync(from);
+    //     is_boundarys[cbucket].set_bit_unsync(to);
+
+    //     return true;
+    // }
+
     bool assign_edge(int cbucket, vid_t from, vid_t to, size_t edge_id)
     {        
-        if (assigned[edge_id]) return false;
-        assigned[edge_id] = true;
+        // if (assigned[edge_id]) return false;
+        // assigned[edge_id] = true;
 
-        writer.save_edge(from, to, cbucket);
         assigned_edges++;
         occupied[cbucket]++;
         // CHECK_EQ(edge2bucket[edge_id], -1);
         // if (edge2bucket[edge_id] != -1) return false;
-        edge2bucket[edge_id] = cbucket;
+        edgelist2bucket[edge_id] = cbucket;
 
         is_boundarys[cbucket].set_bit_unsync(from);
         is_boundarys[cbucket].set_bit_unsync(to);
@@ -124,7 +141,7 @@ class HepPartitioner : public Partitioner
 		}
 		auto &neighbors = mem_graph[vid].adj;
 		vid_t count = 0;
-		for(; count < mem_graph[vid].size_out(); count++) //for the adj_out neighbors
+		for (; count < mem_graph[vid].size_out(); count++) //for the adj_out neighbors
 		{
 			if (occupied[bucket] >= capacity) {
                 // full, stop adding vertices to the boundary of this bucket
@@ -134,13 +151,13 @@ class HepPartitioner : public Partitioner
                 bucket_full_at_start = true;
             }
             
-			vid_eid_t &u = neighbors[count];
+			TAdj &u = neighbors[count];
 
             // high degree vertices are always considered to be in c
 			if (is_high_degree.get(u.vid)) { 
 				if (!bucket_full) {
                     // assign edge --> vid is the left vertex
-					assign_edge(bucket, vid , u.vid, u.eid); 
+					// assign_edge(bucket, vid , u.vid, u.eid); 
                     assign_edge_new(bucket, vid, u);
 					if (!vid_is_in_core) {
                         // vid has one neighbor less now
@@ -148,7 +165,7 @@ class HepPartitioner : public Partitioner
 					}
 				} else { 
                     // bucket is full; assign to next bucket
-					assign_edge(bucket + 1, vid , u.vid, u.eid);
+					// assign_edge(bucket + 1, vid , u.vid, u.eid);
                     assign_edge_new(bucket + 1, vid, u);
 				}
 			} else {
@@ -156,7 +173,7 @@ class HepPartitioner : public Partitioner
 				if (is_core.get(u.vid)) { 
 					if (!bucket_full) {
                         // assign edge --> vid is the left vertex
-						assign_edge(bucket, vid , u.vid, u.eid); 
+						// assign_edge(bucket, vid , u.vid, u.eid); 
                         assign_edge_new(bucket, vid, u);
 						if (!vid_is_in_core) {
                             // vid has one neighbor less now
@@ -164,12 +181,12 @@ class HepPartitioner : public Partitioner
 						}
 					} else {
 						// bucket is full; assign to next bucket
-						assign_edge(bucket + 1, vid , u.vid, u.eid);
+						// assign_edge(bucket + 1, vid , u.vid, u.eid);
                         assign_edge_new(bucket + 1, vid, u);
 					}
 				} else if (is_boundary.get(u.vid)) {
 					if (!bucket_full) {
-						assign_edge(bucket, vid , u.vid, u.eid);
+						// assign_edge(bucket, vid , u.vid, u.eid);
                         assign_edge_new(bucket, vid, u);
 						min_heap.decrease_key(u.vid, 1, mem_graph[u.vid].size());
 						if (!vid_is_in_core) {
@@ -178,14 +195,14 @@ class HepPartitioner : public Partitioner
 						}
 					} else {
 						// bucket is full; assign to next bucket
-						assign_edge(bucket + 1, vid , u.vid, u.eid);
+						// assign_edge(bucket + 1, vid , u.vid, u.eid);
                         assign_edge_new(bucket + 1, vid, u);
 					}
 				}
 			}
 		}
         // for the adj_in neighbors
-		for(; count < mem_graph[vid].size(); count++) {
+		for (; count < mem_graph[vid].size(); count++) {
 			if (occupied[bucket] >= capacity) {
 				bucket_full = true;
 			} 
@@ -194,13 +211,13 @@ class HepPartitioner : public Partitioner
                 bucket_full_at_start = true;
             }
 
-			vid_eid_t &u = neighbors[count];
+			TAdj &u = neighbors[count];
 
             // high degree vertices are always considered to be in c
 			if (is_high_degree.get(u.vid)) { 
 				if (!bucket_full) {
                     // assign edge --> vid is the right vertex
-					assign_edge(bucket, u.vid , vid, u.eid); 
+					// assign_edge(bucket, u.vid , vid, u.eid); 
                     assign_edge_new(bucket, vid, u);
 					if (!vid_is_in_core) {
                         // vid has one neighbor less now
@@ -208,14 +225,14 @@ class HepPartitioner : public Partitioner
 					}
 				} else {
 					// bucket is full; assign to next bucket
-					assign_edge(bucket + 1, u.vid , vid, u.eid);
+					// assign_edge(bucket + 1, u.vid , vid, u.eid);
                     assign_edge_new(bucket + 1, vid, u);
 				}
 			} else {
-				if(is_core.get(u.vid)) {
+				if (is_core.get(u.vid)) {
 					if (!bucket_full) {
                         // vid is on the right side
-						assign_edge(bucket, u.vid, vid, u.eid); 
+						// assign_edge(bucket, u.vid, vid, u.eid); 
                         assign_edge_new(bucket, vid, u);
 						if (!vid_is_in_core) {
                             // vid has one neighbor less now
@@ -223,12 +240,12 @@ class HepPartitioner : public Partitioner
 						}
 					} else {
 						// bucket is full; assign to next bucket
-						assign_edge(bucket + 1, u.vid , vid, u.eid );
+						// assign_edge(bucket + 1, u.vid , vid, u.eid );
                         assign_edge_new(bucket + 1, vid, u);
 					}
 				} else if (is_boundary.get(u.vid)) {
 					if (!bucket_full) {
-						assign_edge(bucket, u.vid, vid, u.eid );
+						// assign_edge(bucket, u.vid, vid, u.eid );
                         assign_edge_new(bucket, vid, u);
 						min_heap.decrease_key(u.vid, 1, mem_graph[u.vid].size());
 						if (!vid_is_in_core) {
@@ -237,7 +254,7 @@ class HepPartitioner : public Partitioner
 						}
 					} else {
 						// bucket is full; assign to next bucket
-						assign_edge(bucket + 1, u.vid , vid, u.eid );
+						// assign_edge(bucket + 1, u.vid , vid, u.eid );
                         assign_edge_new(bucket + 1, vid, u);
 					}
 				}
@@ -260,7 +277,7 @@ class HepPartitioner : public Partitioner
     	}
     	in_memory_add_boundary(vid);
         // Set all neighbors of vid to boundary
-    	for(vid_t i = 0; i < mem_graph[vid].size(); i++) { 
+    	for (vid_t i = 0; i < mem_graph[vid].size(); i++) { 
     		in_memory_add_boundary(mem_graph[vid].adj[i].vid);
     	}
     }
@@ -295,11 +312,14 @@ class HepPartitioner : public Partitioner
     void hdrf_streaming();
 
 
-  public:
+public:
     HepPartitioner(std::string basefilename, bool need_k_split);
     void split();
 
     void calculate_stats();
 };
+
+template class HepPartitioner<vid_eid_t>;
+// template class HepPartitioner<vid_t>;
 
 #endif

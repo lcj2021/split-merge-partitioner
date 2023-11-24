@@ -20,7 +20,7 @@ FsmPartitioner::FsmPartitioner(std::string basefilename)
                 << ", p = " << p;
 
     total_time.start();
-    std::string split_method = FLAGS_method == "fsm" ? "ne" : FLAGS_method.substr(4);
+    split_method = FLAGS_method == "fsm" ? "ne" : FLAGS_method.substr(4);
     if (split_method == "ne") {
         split_partitioner = std::make_unique<NePartitioner>(FLAGS_filename, true);
     } else if (split_method == "dbh") {
@@ -30,7 +30,7 @@ FsmPartitioner::FsmPartitioner(std::string basefilename)
     } else if (split_method == "hdrf") {
         split_partitioner = std::make_unique<HdrfPartitioner>(FLAGS_filename, true);
     } else if (split_method == "hep") {
-        split_partitioner = std::make_unique<HepPartitioner>(FLAGS_filename, true);
+        split_partitioner = std::make_unique<HepPartitioner<vid_eid_t>>(FLAGS_filename, true);
     } else {
         LOG(ERROR) << "Unknown split method!";
     }
@@ -41,7 +41,7 @@ FsmPartitioner::FsmPartitioner(std::string basefilename)
     bucket_info.assign(k * p, BucketInfo(num_vertices));
     for (int i = 0; i < k * p; ++ i) bucket_info[i].old_id = i;
 
-    edge2bucket.assign(num_edges, -1);
+    // edge2bucket.assign(num_edges, -1);
     occupied.assign(p, 0);
     bucket_edge_cnt.assign(FLAGS_p, 0);
 };
@@ -105,7 +105,13 @@ void FsmPartitioner::merge()
     }
     bucket_info.shrink_to_fit();
 
-    size_t curr_assigned_edges = rearrange_edge(edges, valid_bucket);
+    size_t curr_assigned_edges;
+    if (split_method == "hep") {
+        curr_assigned_edges = rearrange_edge_hybrid(valid_bucket);
+    } else {
+        curr_assigned_edges = rearrange_edge(edges, valid_bucket);
+    }
+    
     assigned_edges += curr_assigned_edges;
 }
 
@@ -225,8 +231,8 @@ void FsmPartitioner::calculate_stats()
                 << ", vertices: " << bucket_info[b].replicas 
                 << ", edges: " << bucket_info[b].occupied;
     
-    double avg_vertice_cnt = (double)all_part_vertice_cnt / (p);
-    double avg_edge_cnt = (double)all_part_edge_cnt / (p);
+    double avg_vertice_cnt = static_cast<double>(all_part_vertice_cnt) / (p);
+    double avg_edge_cnt = static_cast<double>(all_part_edge_cnt) / (p);
 
     double std_vertice_deviation = 0.0;
     double std_edge_deviation = 0.0;
@@ -234,8 +240,8 @@ void FsmPartitioner::calculate_stats()
         std_vertice_deviation += pow(bucket2vcnt[b] - avg_vertice_cnt, 2);
         std_edge_deviation += pow(occupied[b] - avg_edge_cnt, 2);
     }
-    std_vertice_deviation = sqrt((double)std_vertice_deviation / p);
-    std_edge_deviation = sqrt((double)std_edge_deviation / p);
+    std_vertice_deviation = sqrt(static_cast<double>(std_vertice_deviation) / p);
+    std_edge_deviation = sqrt(static_cast<double>(std_edge_deviation) / p);
     
     LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
     LOG(INFO) << "Max vertice count / avg vertice count: "
@@ -293,22 +299,46 @@ void FsmPartitioner::split()
 
     split_partitioner->split();
     {
-        std::swap(edges, split_partitioner->edges);
-        std::swap(edge2bucket, split_partitioner->edge2bucket);
-        for (int bucket = 0; bucket < p * k; bucket++) {
-            std::swap(split_partitioner->is_boundarys[bucket], bucket_info[bucket].is_mirror);
-            std::swap(split_partitioner->occupied[bucket], bucket_info[bucket].occupied);
+        if (split_method == "hep") {
+            std::swap(edges, split_partitioner->edges);
+            std::swap(degrees, split_partitioner->degrees);
+            std::swap(mem_graph, split_partitioner->mem_graph);
+            std::swap(edgelist2bucket, split_partitioner->edgelist2bucket);
+            for (int bucket = 0; bucket < p * k; bucket++) {
+                std::swap(split_partitioner->is_boundarys[bucket], bucket_info[bucket].is_mirror);
+                std::swap(split_partitioner->occupied[bucket], bucket_info[bucket].occupied);
+            }
+            // std::cerr << "edgelist2bucket.size: " << edgelist2bucket.size() << std::endl;
+            
+            // if (edges.size() == 0) {
+            //     compute_timer.stop();
+            //     LOG(INFO) << "Loading edges list...";
+            //     std::ifstream fin(binedgelist_name(basefilename),
+            //             std::ios::binary | std::ios::ate); 
+            //     fin.seekg(sizeof(num_vertices) + sizeof(num_edges), std::ios::beg);
+            //     edges.resize(num_edges);
+            //     fin.read((char *)&edges[0], sizeof(edge_t) * num_edges);
+            //     compute_timer.start();
+            // }
+        } else {
+            std::swap(edges, split_partitioner->edges);
+            std::swap(edge2bucket, split_partitioner->edge2bucket);
+            for (int bucket = 0; bucket < p * k; bucket++) {
+                std::swap(split_partitioner->is_boundarys[bucket], bucket_info[bucket].is_mirror);
+                std::swap(split_partitioner->occupied[bucket], bucket_info[bucket].occupied);
+            }
+            if (edges.size() == 0) {
+                compute_timer.stop();
+                LOG(INFO) << "Loading edges list...";
+                std::ifstream fin(binedgelist_name(basefilename),
+                        std::ios::binary | std::ios::ate); 
+                fin.seekg(sizeof(num_vertices) + sizeof(num_edges), std::ios::beg);
+                edges.resize(num_edges);
+                fin.read((char *)&edges[0], sizeof(edge_t) * num_edges);
+                compute_timer.start();
+            }
         }
-        if (edges.size() == 0) {
-            compute_timer.stop();
-            LOG(INFO) << "Loading edges list...";
-            std::ifstream fin(binedgelist_name(basefilename),
-                      std::ios::binary | std::ios::ate); 
-            fin.seekg(sizeof(num_vertices) + sizeof(num_edges), std::ios::beg);
-            edges.resize(num_edges);
-            fin.read((char *)&edges[0], sizeof(edge_t) * num_edges);
-            compute_timer.start();
-        }
+        
     }
 
     std::cerr << "\n" << std::string(25, '#') << " Split phase end, Merge phase start " << std::string(25, '#') << "\n\n";

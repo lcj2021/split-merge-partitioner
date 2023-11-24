@@ -29,7 +29,10 @@ DECLARE_bool(random_streaming);
 DECLARE_bool(hybrid_NE);
 
 using vid_t = uint32_t;
-const vid_t INVALID_VID = -1;
+using eid_t = uint64_t;
+using bid_t = uint16_t;
+const vid_t kInvalidVid = std::numeric_limits<vid_t>::max();
+const bid_t kInvalidBid = std::numeric_limits<bid_t>::max();
 const vid_t offset = (vid_t)1 << 31;
 struct edge_with_id_t {
     vid_t first, second;
