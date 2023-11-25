@@ -41,7 +41,7 @@ FsmPartitioner::FsmPartitioner(std::string basefilename)
     bucket_info.assign(k * p, BucketInfo(num_vertices));
     for (int i = 0; i < k * p; ++ i) bucket_info[i].old_id = i;
 
-    // edge2bucket.assign(num_edges, -1);
+    edge2bucket.assign(num_edges, -1);
     occupied.assign(p, 0);
     bucket_edge_cnt.assign(FLAGS_p, 0);
 };
@@ -361,7 +361,11 @@ void FsmPartitioner::split()
 
     calculate_stats();
 
-    // CHECK_EQ(check_edge(), true);
+    if (split_method == "hep") {
+        CHECK_EQ(check_edge_hybrid(), true);
+    } else {
+        CHECK_EQ(check_edge(), true);
+    }
     
     if (FLAGS_write) 
         LOG(INFO) << "Writing result...";

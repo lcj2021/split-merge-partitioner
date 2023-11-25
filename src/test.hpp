@@ -22,7 +22,6 @@ class Test : public Partitioner
     graph_t adj_out, adj_in;
     // std::vector<size_t> occupied;
     std::vector<vid_t> degrees;
-    std::vector<int8_t> master;
     std::vector<dense_bitset> is_cores;
     // std::vector<dense_bitset> is_boundarys;
 

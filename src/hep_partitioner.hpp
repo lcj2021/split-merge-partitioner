@@ -14,6 +14,8 @@ template <typename TAdj>
 class HepPartitioner : public Partitioner
 {
 private:
+    std::random_device rd;
+    std::mt19937 gen;
     const double BALANCE_RATIO = 1.0;
     double lambda;
     bool extended_metrics;
@@ -24,7 +26,7 @@ private:
 
     // vid_t num_vertices;
     size_t assigned_edges, num_h2h_edges;
-    int p, bucket; 
+    bid_t p, bucket; 
     double average_degree;
     size_t capacity;
     size_t capacity_in_memory; // capacity per partition of in memory partitioning
@@ -51,19 +53,13 @@ private:
 
 
     std::vector<vid_t> vid_id_not_in_boundary; // degrees of vertices//(num_vertices, 0);
-    edgepart_writer<vid_t, uint16_t> writer;
+    edgepart_writer<vid_t, bid_t> writer;
     
 
     void in_memory_clean_up_neighbors(vid_t vid, dense_bitset & is_core, dense_bitset & is_boundary);
 
-    std::vector<bool> assigned;
-    bool assign_edge_new(int cbucket, vid_t from, TAdj& v_e)
+    bool assign_edge(int cbucket, vid_t from, TAdj& v_e)
     {        
-        // auto& [to, eid, bid] = v_e;
-        // if (assigned[edge_id]) return false;
-        // assigned[edge_id] = true;
-
-        // writer.save_edge(from, to, cbucket);
         assigned_edges++;
         occupied[cbucket]++;
 
@@ -79,29 +75,8 @@ private:
         return true;
     }
 
-    // bool assign_edge(int cbucket, vid_t from, vid_t to, size_t edge_id)
-    // {        
-    //     if (assigned[edge_id]) return false;
-    //     assigned[edge_id] = true;
-
-    //     writer.save_edge(from, to, cbucket);
-    //     assigned_edges++;
-    //     occupied[cbucket]++;
-    //     // CHECK_EQ(edge2bucket[edge_id], -1);
-    //     // if (edge2bucket[edge_id] != -1) return false;
-    //     edge2bucket[edge_id] = cbucket;
-
-    //     is_boundarys[cbucket].set_bit_unsync(from);
-    //     is_boundarys[cbucket].set_bit_unsync(to);
-
-    //     return true;
-    // }
-
     bool assign_edge(int cbucket, vid_t from, vid_t to, size_t edge_id)
     {        
-        // if (assigned[edge_id]) return false;
-        // assigned[edge_id] = true;
-
         assigned_edges++;
         occupied[cbucket]++;
         // CHECK_EQ(edge2bucket[edge_id], -1);
@@ -157,37 +132,32 @@ private:
 			if (is_high_degree.get(u.vid)) { 
 				if (!bucket_full) {
                     // assign edge --> vid is the left vertex
-					// assign_edge(bucket, vid , u.vid, u.eid); 
-                    assign_edge_new(bucket, vid, u);
+                    assign_edge(bucket, vid, u);
 					if (!vid_is_in_core) {
                         // vid has one neighbor less now
 						min_heap.decrease_key(vid, 1, mem_graph[vid].size()); 
 					}
 				} else { 
                     // bucket is full; assign to next bucket
-					// assign_edge(bucket + 1, vid , u.vid, u.eid);
-                    assign_edge_new(bucket + 1, vid, u);
+                    assign_edge(bucket + 1, vid, u);
 				}
 			} else {
                 // If the neighbor of vid is in core
 				if (is_core.get(u.vid)) { 
 					if (!bucket_full) {
                         // assign edge --> vid is the left vertex
-						// assign_edge(bucket, vid , u.vid, u.eid); 
-                        assign_edge_new(bucket, vid, u);
+                        assign_edge(bucket, vid, u);
 						if (!vid_is_in_core) {
                             // vid has one neighbor less now
 							min_heap.decrease_key(vid, 1, mem_graph[vid].size()); 
 						}
 					} else {
 						// bucket is full; assign to next bucket
-						// assign_edge(bucket + 1, vid , u.vid, u.eid);
-                        assign_edge_new(bucket + 1, vid, u);
+                        assign_edge(bucket + 1, vid, u);
 					}
 				} else if (is_boundary.get(u.vid)) {
 					if (!bucket_full) {
-						// assign_edge(bucket, vid , u.vid, u.eid);
-                        assign_edge_new(bucket, vid, u);
+                        assign_edge(bucket, vid, u);
 						min_heap.decrease_key(u.vid, 1, mem_graph[u.vid].size());
 						if (!vid_is_in_core) {
                             // vid has one neighbor less now
@@ -195,8 +165,7 @@ private:
 						}
 					} else {
 						// bucket is full; assign to next bucket
-						// assign_edge(bucket + 1, vid , u.vid, u.eid);
-                        assign_edge_new(bucket + 1, vid, u);
+                        assign_edge(bucket + 1, vid, u);
 					}
 				}
 			}
@@ -217,36 +186,31 @@ private:
 			if (is_high_degree.get(u.vid)) { 
 				if (!bucket_full) {
                     // assign edge --> vid is the right vertex
-					// assign_edge(bucket, u.vid , vid, u.eid); 
-                    assign_edge_new(bucket, vid, u);
+                    assign_edge(bucket, vid, u);
 					if (!vid_is_in_core) {
                         // vid has one neighbor less now
 						min_heap.decrease_key(vid, 1, mem_graph[vid].size()); 
 					}
 				} else {
 					// bucket is full; assign to next bucket
-					// assign_edge(bucket + 1, u.vid , vid, u.eid);
-                    assign_edge_new(bucket + 1, vid, u);
+                    assign_edge(bucket + 1, vid, u);
 				}
 			} else {
 				if (is_core.get(u.vid)) {
 					if (!bucket_full) {
                         // vid is on the right side
-						// assign_edge(bucket, u.vid, vid, u.eid); 
-                        assign_edge_new(bucket, vid, u);
+                        assign_edge(bucket, vid, u);
 						if (!vid_is_in_core) {
                             // vid has one neighbor less now
 							min_heap.decrease_key(vid, 1, mem_graph[vid].size()); 
 						}
 					} else {
 						// bucket is full; assign to next bucket
-						// assign_edge(bucket + 1, u.vid , vid, u.eid );
-                        assign_edge_new(bucket + 1, vid, u);
+                        assign_edge(bucket + 1, vid, u);
 					}
 				} else if (is_boundary.get(u.vid)) {
 					if (!bucket_full) {
-						// assign_edge(bucket, u.vid, vid, u.eid );
-                        assign_edge_new(bucket, vid, u);
+                        assign_edge(bucket, vid, u);
 						min_heap.decrease_key(u.vid, 1, mem_graph[u.vid].size());
 						if (!vid_is_in_core) {
                             // vid has one neighbor less now
@@ -254,8 +218,7 @@ private:
 						}
 					} else {
 						// bucket is full; assign to next bucket
-						// assign_edge(bucket + 1, u.vid , vid, u.eid );
-                        assign_edge_new(bucket + 1, vid, u);
+                        assign_edge(bucket + 1, vid, u);
 					}
 				}
 			}
@@ -303,7 +266,7 @@ private:
     void in_memory_assign_remaining();
 
     double compute_partition_score(vid_t u, vid_t v, int bucket_id); // returns HDRF score for edge (u,v) on partition <bucket_id>
-    int best_scored_partition(vid_t u, vid_t v); // returns bucket id where score is best for edge (u,v)
+    bid_t best_scored_partition(vid_t u, vid_t v); // returns bucket id where score is best for edge (u,v)
 
     size_t count_mirrors();
     void compute_stats();

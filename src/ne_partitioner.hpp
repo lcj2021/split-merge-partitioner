@@ -18,7 +18,7 @@ class NePartitioner : public Partitioner
     std::string basefilename;
 
     size_t assigned_edges;
-    int p, bucket;
+    bid_t p, bucket;
     double average_degree;
     size_t capacity;
 
@@ -27,7 +27,6 @@ class NePartitioner : public Partitioner
     MinHeap<vid_t, vid_t> min_heap;
     // std::vector<size_t> occupied;
     std::vector<vid_t> degrees;
-    std::vector<int8_t> master;
     std::vector<dense_bitset> is_cores;
     // std::vector<dense_bitset> is_boundarys;
 
@@ -37,7 +36,7 @@ class NePartitioner : public Partitioner
     std::uniform_int_distribution<vid_t> dis;
 
     bool need_k_split;
-    edgepart_writer<vid_t, uint16_t> writer;
+    edgepart_writer<vid_t, bid_t> writer;
 
     int check_edge(const edge_t *e)
     {
@@ -69,7 +68,7 @@ class NePartitioner : public Partitioner
     void assign_edge(int bucket, vid_t from, vid_t to, size_t edge_id)
     {
         writer.save_edge(from, to, bucket);
-        CHECK_EQ(edge2bucket[edge_id], -1);
+        CHECK_EQ(edge2bucket[edge_id], kInvalidBid);
         edge2bucket[edge_id] = bucket;
         assigned_edges++;
         occupied[bucket]++;
@@ -173,7 +172,6 @@ class NePartitioner : public Partitioner
     }
 
     void assign_remaining();
-    void assign_master();
     size_t count_mirrors();
     void calculate_stats();
 

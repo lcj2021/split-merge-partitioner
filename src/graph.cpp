@@ -44,8 +44,8 @@ void graph_t::build_reverse(const std::vector<edge_t> &edges)
 
     vdata[0] = adjlist_t(neighbors);
     for (vid_t v = 1; v < num_vertices; v++) {
-        count[v] += count[v-1];
-        vdata[v] = adjlist_t(neighbors + count[v-1]);
+        count[v] += count[v - 1];
+        vdata[v] = adjlist_t(neighbors + count[v - 1]);
     }
     for (size_t i = 0; i < edges.size(); i++) {
         if (edges[i].valid()) {

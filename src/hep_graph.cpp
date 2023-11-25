@@ -3,9 +3,9 @@
 
 // returns number of h2h edges
 template <typename TAdj>
-size_t mem_graph_t<TAdj>::inmemory_build(std::ifstream &fin, size_t num_edges, dense_bitset &is_high_degree, dense_bitset &has_high_degree_neighbor, std::vector<size_t> &degrees, bool write_low_degree_edgelist, std::vector<edge_t> &edges)
+eid_t mem_graph_t<TAdj>::inmemory_build(std::ifstream &fin, eid_t num_edges, dense_bitset &is_high_degree, dense_bitset &has_high_degree_neighbor, std::vector<vid_t> &degrees, bool write_low_degree_edgelist, std::vector<edge_t> &edges)
 {
-	size_t num_all_edges = num_edges;
+	eid_t num_all_edges = num_edges;
 
 	fin.seekg(sizeof(num_vertices) + sizeof(num_edges), std::ios::beg);
 	neighbors = (vid_eid_t *)realloc(neighbors, sizeof(vid_eid_t) * num_edges * 2); // store 2 vids for each edge
@@ -15,7 +15,7 @@ size_t mem_graph_t<TAdj>::inmemory_build(std::ifstream &fin, size_t num_edges, d
 	std::vector<vid_t> offsets(num_vertices, 0); // to put the in-neighbors at the right position when building the column array
 
 	nedges = num_edges; // num_edges, num_vertices
-	double average_degree = (num_edges * 2.0)  / (double)num_vertices; // non-rounded average degree
+	double average_degree = num_edges * 2.0 / num_vertices; // non-rounded average degree
 	high_degree_threshold = average_degree * high_degree_factor; // this is the th, if exceeded, the node is ignored for csr
 
 	LOG(INFO) << "Average degree: " << average_degree << std::endl;
@@ -24,10 +24,10 @@ size_t mem_graph_t<TAdj>::inmemory_build(std::ifstream &fin, size_t num_edges, d
     edges.resize(nedges);
     fin.read((char *)&edges[0], sizeof(edge_t) * nedges);
 
-    for (size_t i = 0; i < nedges; i++) {
-        degrees[edges[i].first]++;
-        degrees[edges[i].second]++;
-        offsets[edges[i].first]++;
+    for (eid_t i = 0; i < nedges; ++i) {
+        ++degrees[edges[i].first];
+        ++degrees[edges[i].second];
+        ++offsets[edges[i].first];
     }
 
 	// now, degrees are complete. degrees are the degrees of the vertices.
@@ -40,18 +40,16 @@ size_t mem_graph_t<TAdj>::inmemory_build(std::ifstream &fin, size_t num_edges, d
 	vdata[0] = mem_adjlist_t(neighbors);
 	if (degrees[0] > high_degree_threshold) {
 		is_high_degree.set_bit_unsync(0);
-		h_count++;
+		++h_count;
 	}
 
-	std::vector<size_t> index(num_vertices, 0); // for index array
+	std::vector<eid_t> index(num_vertices, 0); // for index array
 
-	for (vid_t v = 1; v < num_vertices; v++) {
-
+	for (vid_t v = 1; v < num_vertices; ++v) {
 		// we ignore the degrees of vertices that have a high degree; we also ignore them when building the column array
 		if (degrees[v - 1] <= high_degree_threshold) {
 			index[v] = index[v - 1] + degrees[v - 1];
-		}
-		else{
+		} else {
 			index[v] = index[v - 1]; // ignoring v - 1, will not use it in CSR
 		}
 
@@ -60,7 +58,7 @@ size_t mem_graph_t<TAdj>::inmemory_build(std::ifstream &fin, size_t num_edges, d
 
 		if (degrees[v] > high_degree_threshold) {
 			is_high_degree.set_bit_unsync(v);
-			h_count++;
+			++h_count;
 		}
 	}
 
@@ -78,37 +76,34 @@ size_t mem_graph_t<TAdj>::inmemory_build(std::ifstream &fin, size_t num_edges, d
 	 * **************************
 	 */
 
-	size_t savings = 0;
+	eid_t savings = 0;
 
-    for (size_t i = 0; i < nedges; i++) {
-        vid_t u = edges[i].first;
-        vid_t v = edges[i].second;
+    for (eid_t i = 0; i < nedges; ++i) {
+        const auto& [u, v] = edges[i];
         // we do not build column array for high degree vertices
         bool low_degree = false; // needed in case we write a low_degree edge list out to file
         if (degrees[u] <= high_degree_threshold) {
             vdata[u].push_back_out(vid_eid_t(v));
             low_degree = true;
-        }
-        else{
+        } else {
             has_high_degree_neighbor.set_bit_unsync(v);
-            savings++;
+            ++savings;
         }
         if (degrees[v] <= high_degree_threshold) {
             vdata[v].push_back_in(vid_eid_t(u), offsets[v]);
             low_degree = true;
-        }
-        else{
+        } else {
             has_high_degree_neighbor.set_bit_unsync(u);
-            savings++;
+            ++savings;
             if (degrees[u] > high_degree_threshold) { // u AND v are both high degree vertices, treat the edge specially
-                edge_with_id_t edge = edge_with_id_t(u,v,i);
-                h2h_file.write((char*)&edge, sizeof(edge_with_id_t));
-                num_h2h_edges++;
+                edge_t edge = edge_t(u, v);
+                h2h_file.write((char*)&edge, sizeof(edge_t));
+                ++num_h2h_edges;
             }
         }
         if (write_low_degree_edgelist && low_degree) {
-            edge_with_id_t edge = edge_with_id_t(u,v,i);
-            low_degree_file.write((char*)&edge, sizeof(edge_with_id_t));
+            edge_t edge = edge_t(u, v);
+            low_degree_file.write((char*)&edge, sizeof(edge_t));
         }
 
     }
@@ -117,7 +112,7 @@ size_t mem_graph_t<TAdj>::inmemory_build(std::ifstream &fin, size_t num_edges, d
 	LOG(INFO) << "Edges between two high-degree vertices: " << num_h2h_edges << std::endl;
 
 	// write the number of vertices and number of low-degree edges to the low-file
-	size_t num_low_edges = num_all_edges - num_h2h_edges;
+	eid_t num_low_edges = num_all_edges - num_h2h_edges;
 
 	low_degree_file.seekp(pos_low);
 	low_degree_file.write((char *)&num_vertices, sizeof(num_vertices));
@@ -130,9 +125,9 @@ size_t mem_graph_t<TAdj>::inmemory_build(std::ifstream &fin, size_t num_edges, d
 
 // returns number of h2h edges
 template <typename TAdj>
-size_t mem_graph_t<TAdj>::stream_build(std::ifstream &fin, size_t num_edges, dense_bitset &is_high_degree, dense_bitset &has_high_degree_neighbor, std::vector<size_t> &degrees, bool write_low_degree_edgelist)
+eid_t mem_graph_t<TAdj>::stream_build(std::ifstream &fin, eid_t num_edges, dense_bitset &is_high_degree, dense_bitset &has_high_degree_neighbor, std::vector<vid_t> &degrees, bool write_low_degree_edgelist)
 {
-	size_t num_all_edges = num_edges;
+	eid_t num_all_edges = num_edges;
 
 	fin.seekg(sizeof(num_vertices) + sizeof(num_edges), std::ios::beg);
 
@@ -140,29 +135,29 @@ size_t mem_graph_t<TAdj>::stream_build(std::ifstream &fin, size_t num_edges, den
 	std::vector<vid_t> offsets(num_vertices, 0); // to put the in-neighbors at the right position when building the column array
 
 	nedges = num_edges; // num_edges, num_vertices
-	double average_degree = (num_edges * 2.0)  / (double)num_vertices; // non-rounded average degree
+	double average_degree = num_edges * 2.0 / num_vertices; // non-rounded average degree
 	high_degree_threshold = average_degree * high_degree_factor; // this is the th, if exceeded, the node is ignored for csr
 
 	LOG(INFO) << "Average degree: " << average_degree << std::endl;
 	LOG(INFO) << "High degree threshold: " << high_degree_threshold << std::endl;
 
-    std::vector<edge_t> tmp_edges; // temporary buffer to read edges from file
-	size_t chunk_size;
+    std::vector<edge_t> stream_edges; // temporary buffer to read edges from file
+	eid_t chunk_size;
 
 	if (num_edges >= 100000) {
 		chunk_size = 100000; // batch read of so many edges
 	} else {
 		chunk_size = num_edges;
 	}
-	tmp_edges.resize(chunk_size);
+	stream_edges.resize(chunk_size);
     fin.seekg(sizeof(num_vertices) + sizeof(num_edges), std::ios::beg);
 
     while (num_edges > 0) { // edges to be read
-		fin.read((char *)&tmp_edges[0], sizeof(edge_t) * chunk_size);
-	    for (size_t i = 0; i < chunk_size; i++) {
-	    	degrees[tmp_edges[i].first]++;
-	    	degrees[tmp_edges[i].second]++;
-	    	offsets[tmp_edges[i].first]++;
+		fin.read((char *)&stream_edges[0], sizeof(edge_t) * chunk_size);
+	    for (eid_t i = 0; i < chunk_size; ++i) {
+	    	++degrees[stream_edges[i].first];
+	    	++degrees[stream_edges[i].second];
+	    	++offsets[stream_edges[i].first];
 	    }
 	    num_edges -= chunk_size;
 	    if (num_edges < chunk_size) { // adapt chunk size for last batch read
@@ -178,13 +173,12 @@ size_t mem_graph_t<TAdj>::stream_build(std::ifstream &fin, size_t num_edges, den
 	vid_t h_count = 0; // how many high degree vertices are found
 	if (degrees[0] > high_degree_threshold) {
 		is_high_degree.set_bit_unsync(0);
-		h_count++;
+		++h_count;
 	}
 
-	std::vector<size_t> index(num_vertices, 0); // for index array
+	std::vector<eid_t> index(num_vertices, 0); // for index array
 
-    size_t neighbors_len = 0;
-	for (vid_t v = 1; v < num_vertices; v++) {
+	for (vid_t v = 1; v < num_vertices; ++v) {
 		// we ignore the degrees of vertices that have a high degree; we also ignore them when building the column array
 		if (degrees[v - 1] <= high_degree_threshold) {
 			index[v] = index[v - 1] + degrees[v - 1];
@@ -194,10 +188,10 @@ size_t mem_graph_t<TAdj>::stream_build(std::ifstream &fin, size_t num_edges, den
 
 		if (degrees[v] > high_degree_threshold) {
 			is_high_degree.set_bit_unsync(v);
-			h_count++;
+			++h_count;
 		}
 	}
-    neighbors_len = index[num_vertices - 1] + degrees[num_vertices - 1];
+    eid_t neighbors_len = index[num_vertices - 1] + degrees[num_vertices - 1];
     LOG(INFO) << "neighbors_len: " << neighbors_len;
 
     neighbors = (vid_eid_t *)realloc(neighbors, sizeof(vid_eid_t) * neighbors_len); // store 2 vids for each edge
@@ -206,11 +200,12 @@ size_t mem_graph_t<TAdj>::stream_build(std::ifstream &fin, size_t num_edges, den
 	CHECK(neighbors) << "allocation failed!";
 
     #pragma omp parallel for
-    for (size_t i = 0; i < neighbors_len; ++i) {
+    for (eid_t i = 0; i < neighbors_len; ++i) {
         neighbors[i].bid = kInvalidBid;
     }
 
-    for (vid_t vid = 0; vid < num_vertices; vid++) {
+    #pragma omp parallel for
+    for (vid_t vid = 0; vid < num_vertices; ++vid) {
 		vdata[vid] = mem_adjlist_t(neighbors + index[vid]);
     }
 
@@ -237,14 +232,13 @@ size_t mem_graph_t<TAdj>::stream_build(std::ifstream &fin, size_t num_edges, den
 
 	fin.seekg(sizeof(num_vertices) + sizeof(num_edges), std::ios::beg); // start read from beginning
 
-	size_t savings = 0;
+	eid_t savings = 0;
 
-    vid_t edge_id = 0;
+    eid_t edge_id = 0;
     while (num_edges > 0) { // edges to be read
-	   	fin.read((char *)&tmp_edges[0], sizeof(edge_t) * chunk_size);
-	    for (size_t i = 0; i < chunk_size; i++, edge_id ++) {
-	   		vid_t u = tmp_edges[i].first;
-	   		vid_t v = tmp_edges[i].second;
+	   	fin.read((char *)&stream_edges[0], sizeof(edge_t) * chunk_size);
+	    for (eid_t i = 0; i < chunk_size; ++i, ++edge_id) {
+	   		const auto& [u, v] = stream_edges[i];
 	   		// we do not build column array for high degree vertices
 	   		bool low_degree = false; // needed in case we write a low_degree edge list out to file
 	   		if (degrees[u] <= high_degree_threshold) {
@@ -252,24 +246,24 @@ size_t mem_graph_t<TAdj>::stream_build(std::ifstream &fin, size_t num_edges, den
 	   			low_degree = true;
 	   		} else {
 	   			has_high_degree_neighbor.set_bit_unsync(v);
-	   			savings++;
+	   			++savings;
 	   		}
 	   		if (degrees[v] <= high_degree_threshold) {
 	   			vdata[v].push_back_in(vid_eid_t(u), offsets[v]);
 	   			low_degree = true;
 	   		} else {
 	   			has_high_degree_neighbor.set_bit_unsync(u);
-	   			savings++;
+	   			++savings;
                 // u AND v are both high degree vertices, treat the edge specially
 	   		  	if (degrees[u] > high_degree_threshold) {
-	   		  		edge_with_id_t edge = edge_with_id_t(u, v, edge_id);
-	   		  		h2h_file.write((char*)&edge, sizeof(edge_with_id_t));
-	   		  		num_h2h_edges++;
+	   		  		edge_t edge = edge_t(u, v);
+	   		  		h2h_file.write((char*)&edge, sizeof(edge_t));
+	   		  		++num_h2h_edges;
 	   			}
 	   		}
 	   		if (write_low_degree_edgelist && low_degree) {
-	   			edge_with_id_t edge = edge_with_id_t(u,v, edge_id);
-	   			low_degree_file.write((char*)&edge, sizeof(edge_with_id_t));
+	   			edge_t edge = edge_t(u, v);
+	   			low_degree_file.write((char*)&edge, sizeof(edge_t));
 	   		}
 	   	}
 	   	num_edges -= chunk_size;
@@ -282,13 +276,11 @@ size_t mem_graph_t<TAdj>::stream_build(std::ifstream &fin, size_t num_edges, den
 	LOG(INFO) << "Edges between two high-degree vertices: " << num_h2h_edges << std::endl;
 
 	// write the number of vertices and number of low-degree edges to the low-file
-	size_t num_low_edges = num_all_edges - num_h2h_edges;
+	eid_t num_low_edges = num_all_edges - num_h2h_edges;
 
 	low_degree_file.seekp(pos_low);
 	low_degree_file.write((char *)&num_vertices, sizeof(num_vertices));
 	low_degree_file.write((char *)&num_low_edges, sizeof(num_edges));
 
-
 	return num_h2h_edges;
-
 }

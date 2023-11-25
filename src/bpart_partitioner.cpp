@@ -262,7 +262,7 @@ std::tuple<size_t, size_t>
 BPartPartitioner::overlap_partition_vertex(vid_t vid, int bucket_id) 
 {
     size_t overlap = 0, neighbors_cnt = 0;
-    rep (direction, 2) {
+    for (int direction = 0; direction < 2; ++direction) {
         auto &neighbors = (direction ? adj_out[vid] : adj_in[vid]);
         neighbors_cnt += neighbors.size();
         for (size_t i = 0; i < neighbors.size(); ++ i) {

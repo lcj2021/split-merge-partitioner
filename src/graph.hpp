@@ -9,11 +9,11 @@ struct uint40_t {
 
 class adjlist_t
 {
-  private:
+private:
     uint40_t *adj;
     vid_t len;
 
-  public:
+public:
     adjlist_t() : adj(NULL), len(0) {}
     adjlist_t(uint40_t *adj, vid_t len = 0) : adj(adj), len(len) {}
     uint40_t *begin() { return adj; }

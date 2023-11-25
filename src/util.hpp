@@ -3,36 +3,24 @@
 
 #include "common.hpp"
 
-void preada(int f, char *buf, size_t nbytes, size_t off);
-void reada(int f, char *buf, size_t nbytes);
-void writea(int f, char *buf, size_t nbytes);
-
 inline std::string h2hedgelist_name(const std::string &basefilename)
 {
-	std::stringstream ss;
-	ss << basefilename << ".h2h_edgelist";
-	return ss.str();
+	return basefilename + ".h2h_edgelist";
 }
 
 inline std::string lowedgelist_name(const std::string &basefilename)
 {
-	std::stringstream ss;
-	ss << basefilename << ".low_edgelist";
-	return ss.str();
+	return basefilename + ".low_edgelist";
 }
 
 inline std::string binedgelist_name(const std::string &basefilename)
 {
-    std::stringstream ss;
-    ss << basefilename << ".binedgelist";
-    return ss.str();
+    return basefilename + ".binedgelist";
 }
 
 inline std::string degree_name(const std::string &basefilename)
 {
-    std::stringstream ss;
-    ss << basefilename << ".degree";
-    return ss.str();
+    return basefilename + ".degree";
 }
 
 inline std::string edge_partitioned_name(const std::string &basefilename)

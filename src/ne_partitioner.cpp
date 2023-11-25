@@ -27,28 +27,28 @@ NePartitioner::NePartitioner(std::string basefilename, bool need_k_split)
 
     LOG(INFO) << "num_vertices: " << num_vertices
               << ", num_edges: " << num_edges;
-    CHECK_EQ(sizeof(vid_t) + sizeof(size_t) + num_edges * sizeof(edge_t), filesize);
+    CHECK_EQ(sizeof(vid_t) + sizeof(eid_t) + num_edges * sizeof(edge_t), filesize);
 
     p = FLAGS_p;
     if (need_k_split) {
         p *= FLAGS_k;
     }
 
-    average_degree = (double)num_edges * 2 / num_vertices;
+    average_degree = num_edges * 2.0 / num_vertices;
     assigned_edges = 0;
-    capacity = (double)num_edges * BALANCE_RATIO / p + 1;
+    capacity = static_cast<double>(num_edges) * BALANCE_RATIO / p + 1;
     occupied.assign(p, 0);
     adj_out.resize(num_vertices);
     adj_in.resize(num_vertices);
     is_cores.assign(p, dense_bitset(num_vertices));
     is_boundarys.assign(p, dense_bitset(num_vertices));
-    master.assign(num_vertices, -1);
     dis.param(std::uniform_int_distribution<vid_t>::param_type(0, num_vertices - 1));
-    edge2bucket.assign(num_edges, -1);
+    edge2bucket.assign(num_edges, kInvalidBid);
 
     Timer read_timer;
     read_timer.start();
     LOG(INFO) << "loading...";
+    LOG(INFO) << sizeof(edge_t) * num_edges / 1024.0 / 1024 / 1024 << " G bytes needed for edges " << __FILE__<<":"<<__LINE__;
     edges.resize(num_edges);
     fin.read((char *)&edges[0], sizeof(edge_t) * num_edges);
 
@@ -75,22 +75,26 @@ NePartitioner::NePartitioner(std::string basefilename, bool need_k_split)
 void NePartitioner::assign_remaining()
 {
     auto &is_boundary = is_boundarys[p - 1], &is_core = is_cores[p - 1];
-    repv (u, num_vertices)
-        for (auto &i : adj_out[u])
+    for (vid_t u = 0; u < num_vertices; ++u) {
+        for (auto &i : adj_out[u]) {
             if (edges[i.v].valid()) {
                 assign_edge(p - 1, u, edges[i.v].second, i.v);
                 is_boundary.set_bit_unsync(u);
                 is_boundary.set_bit_unsync(edges[i.v].second);
             }
+        }
+    }
+        
 
-    repv (i, num_vertices) {
+    for (vid_t i = 0; i < num_vertices; ++i) {
         if (is_boundary.get(i)) {
             is_core.set_bit_unsync(i);
-            rep (j, p - 1)
-                if (is_cores[j].get(i)) {
+            for (bid_t b = 0; b < p - 1; ++b) {
+                if (is_cores[b].get(i)) {
                     is_core.set_unsync(i, false);
                     break;
                 }
+            }
         }
     }
 }
@@ -115,7 +119,7 @@ void NePartitioner::calculate_stats()
     size_t max_part_edge_cnt = *std::max_element(occupied.begin(), occupied.end());
     size_t all_part_edge_cnt = accumulate(occupied.begin(), occupied.end(), (size_t)0);
 
-    for (int b = 0; b < p; ++ b) 
+    for (bid_t b = 0; b < p; ++ b) 
         LOG(INFO) << "Bucket_info: " << b
                 << ", vertices: " << bucket2vcnt[b]
                 << ", edges: " << occupied[b];
@@ -125,7 +129,7 @@ void NePartitioner::calculate_stats()
 
     double std_vertice_deviation = 0.0;
     double std_edge_deviation = 0.0;
-    for (int b = 0; b < p; ++ b) {
+    for (bid_t b = 0; b < p; ++ b) {
         std_vertice_deviation += pow(bucket2vcnt[b] - avg_vertice_cnt, 2);
         std_edge_deviation += pow(occupied[b] - avg_edge_cnt, 2);
     }
@@ -197,8 +201,8 @@ void NePartitioner::split()
             occupy_vertex(vid, d);
         }
         min_heap.clear();
-        rep (direction, 2)
-            repv (vid, num_vertices) {
+        for (int direction = 0; direction < 2; ++direction) {
+            for (vid_t vid = 0; vid < num_vertices; ++vid) {
                 adjlist_t &neighbors = direction ? adj_out[vid] : adj_in[vid];
                 for (size_t i = 0; i < neighbors.size();) {
                     if (edges[neighbors[i].v].valid()) {
@@ -209,11 +213,11 @@ void NePartitioner::split()
                     }
                 }
             }
+        }
     }
     bucket = p - 1;
     std::cerr << bucket << std::endl;
     assign_remaining();
-    // assign_master();
     compute_timer.stop();
     // LOG(INFO) << "expected edges in each partition: " << num_edges / p;
     // rep (i, p)

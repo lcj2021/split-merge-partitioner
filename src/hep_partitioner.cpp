@@ -3,7 +3,7 @@
 
 template <typename TAdj>
 HepPartitioner<TAdj>::HepPartitioner(std::string basefilename, bool need_k_split) // @suppress("Class members should be properly initialized")
-    : basefilename(basefilename), writer(basefilename, !need_k_split && FLAGS_write)
+    : basefilename(basefilename), rd(), gen(rd()), writer(basefilename, !need_k_split && FLAGS_write)
 {
 
     Timer convert_timer;
@@ -27,7 +27,7 @@ HepPartitioner<TAdj>::HepPartitioner(std::string basefilename, bool need_k_split
     fin.read((char *)&num_edges, sizeof(num_edges));
     LOG(INFO) << "num_vertices: " << num_vertices
               << ", num_edges: " << num_edges;
-    CHECK_EQ(sizeof(vid_t) + sizeof(size_t) + num_edges * sizeof(edge_t), filesize);
+    CHECK_EQ(sizeof(vid_t) + sizeof(eid_t) + num_edges * sizeof(edge_t), filesize);
 
     p = FLAGS_p;
     if (need_k_split) {
@@ -179,18 +179,15 @@ void HepPartitioner<TAdj>::in_memory_assign_remaining()
 
 	LOG(INFO) << "Assigned edges before assign_remaining: " << assigned_edges << std::endl;
 
-	repv (vid, num_vertices) {
-
+	for (vid_t vid = 0; vid < num_vertices; ++vid) {
 		if (!is_in_a_core.get(vid)) {
-
 			auto &neighbors = mem_graph[vid].adj;
 			vid_t i = 0;
-			for(; i < mem_graph[vid].size_out(); i++)
-			{
-				int target = best_scored_partition(vid, neighbors[i].vid);
+			for(; i < mem_graph[vid].size_out(); ++i) {
+				bid_t target = best_scored_partition(vid, neighbors[i].vid);
                 bool ok;
 				// ok = assign_edge(target, vid, neighbors[i].vid, neighbors[i].eid);
-				ok = assign_edge_new(target, vid, neighbors[i]);
+				ok = assign_edge(target, vid, neighbors[i]);
                 if (!ok) {
                     LOG(INFO) << "Could not assign edge " << vid << " " << neighbors[i].vid << std::endl;
                 }
@@ -203,10 +200,10 @@ void HepPartitioner<TAdj>::in_memory_assign_remaining()
 				for(; i < mem_graph[vid].size(); i++) //for the adj_in neighbors
 				{
 					if (is_high_degree.get(neighbors[i].vid)) {
-						int target = best_scored_partition(neighbors[i].vid, vid);
+						bid_t target = best_scored_partition(neighbors[i].vid, vid);
 						bool ok;
                         // ok = assign_edge(target, neighbors[i].vid, vid, neighbors[i].eid);
-                        ok = assign_edge_new(target, neighbors[i].vid, neighbors[i]);
+                        ok = assign_edge(target, neighbors[i].vid, neighbors[i]);
                         if (!ok) {
                             LOG(INFO) << "Could not assign edge " << vid << " " << neighbors[i].vid << std::endl;
                         }
@@ -283,7 +280,7 @@ void HepPartitioner<TAdj>::hdrf_streaming()
 	mem_graph.h2h_file.open(h2hedgelist_name(basefilename), std::ios_base::binary | std::ios_base::in);
 	mem_graph.h2h_file.seekg(0, std::ios::beg);
 
-	std::vector<edge_with_id_t> stream_edges; // temporary buffer to read edges from file
+	std::vector<edge_t> stream_edges; // temporary buffer to read edges from file
 	size_t chunk_size;
 	size_t left_h2h_edges = mem_graph.num_h2h_edges;
     size_t id_h2h_edges = 0;
@@ -302,7 +299,7 @@ void HepPartitioner<TAdj>::hdrf_streaming()
     min_size = *std::min_element(occupied.begin(), occupied.end());
 
 	while (left_h2h_edges > 0) { // edges to be read
-		mem_graph.h2h_file.read((char *)&stream_edges[0], sizeof(edge_with_id_t) * chunk_size);
+		mem_graph.h2h_file.read((char *)&stream_edges[0], sizeof(edge_t) * chunk_size);
 		for (size_t i = 0; i < chunk_size; i++) {
 
 			bucket = best_scored_partition(stream_edges[i].first, stream_edges[i].second); // according to HDRF scoring
@@ -351,8 +348,6 @@ size_t HepPartitioner<TAdj>::count_mirrors()
     }
     std_deviation = sqrt((double)std_deviation / p);
 
-    LOG(INFO) << "master balance: "
-            << (double)max_part_vertice_cnt / avg_vertice_cnt;
     LOG(INFO) << "std_deviation / avg: "
             << std_deviation / avg_vertice_cnt;
     rep (i, p)
@@ -512,18 +507,20 @@ double HepPartitioner<TAdj>::compute_partition_score(vid_t u, vid_t v, int bucke
 }
 
 template <typename TAdj>
-int HepPartitioner<TAdj>::best_scored_partition(vid_t u, vid_t v) 
+bid_t HepPartitioner<TAdj>::best_scored_partition(vid_t u, vid_t v) 
 {
 	double best_score = -1.0;
-	int best_partition = 0;
-	for (int i = 0; i < p; i++) {
+	bid_t best_partition = kInvalidBid;
+	for (bid_t i = 0; i < p; i++) {
 		double score = compute_partition_score(u, v, i);
-//		cout << "score for partition " << i << " is " << score << endl;
 		if (score > best_score) {
 			best_score = score;
 			best_partition = i;
 		}
 	}
+    if (best_partition == kInvalidBid) {
+        best_partition = gen() % p;
+    }
 	return best_partition;
 }
 
@@ -531,7 +528,6 @@ template <typename TAdj>
 void HepPartitioner<TAdj>::split()
 {
     // int abort_counter = 0;
-    assigned.assign(num_edges, false);
     LOG(INFO) << "partition `" << basefilename << "'";
     LOG(INFO) << "number of partitions: " << p;
 
@@ -547,48 +543,13 @@ void HepPartitioner<TAdj>::split()
 
     compute_timer.stop();
 
-    LOG(INFO) << "expected edges in each partition: " << num_edges / p;
-    rep (i, p)
-        LOG(INFO) << "edges in partition " << i << ": " << occupied[i];
-    size_t max_occupied = *std::max_element(occupied.begin(), occupied.end());
-    LOG(INFO) << "balance: " << (double)max_occupied / ((double)num_edges / p);
-    size_t total_mirrors = count_mirrors();
-    LOG(INFO) << "total mirrors: " << total_mirrors;
-    LOG(INFO) << "replication factor: " << (double)total_mirrors / num_vertices;
-    LOG(INFO) << "time used for partitioning: " << compute_timer.get_time();
-
     calculate_stats();
 
     CHECK_EQ(assigned_edges, num_edges);
-    // CHECK_EQ(check_edge(), 1);
+    // CHECK_EQ(check_edge_hybrid(), 1);
 
     total_time.stop();
     LOG(INFO) << "total partition time: " << total_time.get_time();
-
-    // size_t num_neighbors = 0, num_assigned_neighbors = 0;
-    // size_t num_invalid_edges = 0;
-    // for (vid_t from = 0, offset = 0; from < num_vertices; ++from) {
-    //     if (degrees[from] > mem_graph.high_degree_threshold) continue;
-    //     for (size_t i = 0; i < degrees[from]; ++i) {
-    //         const auto& to = mem_graph.neighbors[offset + i];
-    //         if (to.bid != kInvalidBid) {
-    //             ++ num_assigned_neighbors;
-    //         } else {
-    //             num_invalid_edges++;
-    //         }
-    //         ++ num_neighbors;
-    //     }
-    //     offset += degrees[from];
-    // }
-    // LOG(INFO) << "num_neighbors: " << num_neighbors;
-    // LOG(INFO) << "num_assigned_neighbors: " << num_assigned_neighbors;
-    // LOG(INFO) << "num_h2h_edges: " << num_h2h_edges;
-    // LOG(INFO) << "num_invalid_edges: " << num_invalid_edges;
-
-    // std::ofstream out("hep_ok");
-    // for (auto& x : count) {
-    //     out << x << std::endl;
-    // }
 
     /*
      * compute some stats about the partitioned graph (for further analysis)

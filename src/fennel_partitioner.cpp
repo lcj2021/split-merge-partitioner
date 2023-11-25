@@ -100,11 +100,11 @@ void FennelPartitioner::split()
 }
 
 // <final bucket, additional edges>
-std::tuple<int, size_t> FennelPartitioner::best_scored_partition(vid_t vid) {
+std::tuple<bid_t, size_t> FennelPartitioner::best_scored_partition(vid_t vid) {
 	double best_score = -1e18;
-	int best_partition = -1;
+	bid_t best_partition = kInvalidBid;
     size_t final_additional_edges = 0;
-	for (int i = 0; i < p; ++ i) {
+	for (bid_t i = 0; i < p; ++ i) {
         if (vcount[i] >= capacity)  continue;
 		const auto &[score, additional_edges] = compute_partition_score(vid, i);
 		if (score > best_score) {
@@ -113,7 +113,7 @@ std::tuple<int, size_t> FennelPartitioner::best_scored_partition(vid_t vid) {
             final_additional_edges = additional_edges;
 		}
 	}
-    if (best_partition == -1) {
+    if (best_partition == kInvalidBid) {
         best_partition = gen() % p;
         const auto &[overlap, neighbors_cnt] = overlap_partition_vertex(vid, best_partition);
         final_additional_edges = neighbors_cnt - overlap;

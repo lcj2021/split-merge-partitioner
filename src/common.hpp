@@ -12,7 +12,6 @@
 #include <glog/logging.h>
 
 #define rep(i, n) for (int i = 0; i < (int)(n); ++i)
-#define repv(i, n) for (vid_t i = 0; i < n; ++i)
 
 DECLARE_int32(p);
 DECLARE_int32(k);
@@ -34,12 +33,6 @@ using bid_t = uint16_t;
 const vid_t kInvalidVid = std::numeric_limits<vid_t>::max();
 const bid_t kInvalidBid = std::numeric_limits<bid_t>::max();
 const vid_t offset = (vid_t)1 << 31;
-struct edge_with_id_t {
-    vid_t first, second;
-    size_t eid;
-    edge_with_id_t() : first(0), second(0), eid(0) {}
-    edge_with_id_t(vid_t first, vid_t second, vid_t eid) : first(first), second(second), eid(eid) {}
-};
 
 struct edge_t {
     vid_t first, second;

@@ -28,7 +28,7 @@ class BPartPartitioner : public Partitioner
     graph_t adj_out, adj_in;
     std::vector<double> w_;
     // std::vector<dense_bitset> is_boundarys;
-    vertexpart_writer<vid_t, uint16_t> writer;
+    vertexpart_writer<vid_t, bid_t> writer;
     std::vector<uint16_t> vertex2bucket;
     int max_degree;
     double average_degree;

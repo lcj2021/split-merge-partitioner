@@ -16,7 +16,7 @@ class FennelPartitioner : public Partitioner
     std::mt19937 gen;
     // vid_t num_vertices;
     // size_t num_edges;
-    int p;
+    bid_t p;
 
     // // use mmap for file input
     // int fin;
@@ -29,7 +29,7 @@ class FennelPartitioner : public Partitioner
     graph_t adj_out, adj_in;
     std::vector<size_t> vcount;
     // std::vector<dense_bitset> is_boundarys;
-    vertexpart_writer<vid_t, uint16_t> writer;
+    vertexpart_writer<vid_t, bid_t> writer;
     std::vector<uint16_t> vertex2bucket;
     int max_degree;
     size_t capacity;
@@ -53,7 +53,7 @@ class FennelPartitioner : public Partitioner
         occupied[bucket] += additional_edges;
     }
 
-    std::tuple<int, size_t> best_scored_partition(vid_t v); // returns <final bucket, additional edges> whose score is best for vertex v
+    std::tuple<bid_t, size_t> best_scored_partition(vid_t v); // returns <final bucket, additional edges> whose score is best for vertex v
     std::tuple<double, size_t> compute_partition_score(vid_t vid, int bucket_id);
 
     void calculate_stats();
