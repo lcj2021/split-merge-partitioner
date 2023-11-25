@@ -32,7 +32,7 @@ class DbhPartitioner : public Partitioner
     inline void assign_edge(int bucket, vid_t from, vid_t to, size_t edge_id) noexcept
     {
         writer.save_edge(from, to, bucket);
-        edge2bucket[edge_id] = bucket;
+        edgelist2bucket[edge_id] = bucket;
         occupied[bucket]++;
         if (!is_boundarys[bucket].get(from)) {
             ++ vcount[bucket];

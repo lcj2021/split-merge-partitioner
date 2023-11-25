@@ -27,7 +27,7 @@ private:
 
     // mem_graph_t<vid_eid_t> mem_graph;
 
-    std::vector<size_t> bucket_edge_cnt;
+    std::vector<size_t> num_bucket_edges;
 
     struct BucketInfo {
         dense_bitset is_mirror;
@@ -109,11 +109,11 @@ private:
     {
         eid_t curr_assigned_edges = 0;
         for (eid_t edge_id = 0; edge_id < e.size(); ++edge_id) {
-            auto &edge_bucket = edge2bucket[edge_id];
+            auto &edge_bucket = edgelist2bucket[edge_id];
             e[edge_id].recover();
             if (valid_bucket.count(edge_bucket)) {
                 edge_bucket = valid_bucket.at(edge_bucket);
-                ++bucket_edge_cnt[edge_bucket] ;
+                ++num_bucket_edges[edge_bucket] ;
                 // e[edge_id].remove();
                 ++curr_assigned_edges;
             } else {        // [[unlikely]]  No edge should be left
@@ -130,7 +130,7 @@ private:
                 const vid_t& u, const vid_t& v) {
                 if (valid_bucket.count(edge_bucket)) {
                     edge_bucket = valid_bucket.at(edge_bucket);
-                    ++bucket_edge_cnt[edge_bucket];
+                    ++num_bucket_edges[edge_bucket];
                 } else {
                     LOG(FATAL) << "bucket: " << edge_bucket 
                             << ", should not be left in the final round\n";
@@ -163,7 +163,7 @@ private:
         );
         // for (size_t edge_id = 0; edge_id < num_edges; ++edge_id) {
         //     // edges[edge_id].recover();
-        //     int16_t edge_bucket = edge2bucket[edge_id];
+        //     int16_t edge_bucket = edgelist2bucket[edge_id];
         //     vid_t u = edges[edge_id].first, v = edges[edge_id].second;
         //     dbitsets[edge_bucket].set_bit_unsync(u);
         //     dbitsets[edge_bucket].set_bit_unsync(v);
@@ -199,7 +199,7 @@ private:
         }
         for (size_t edge_id = 0; edge_id < num_edges; ++edge_id) {
             // edges[edge_id].recover();
-            int16_t edge_bucket = edge2bucket[edge_id];
+            int16_t edge_bucket = edgelist2bucket[edge_id];
             vid_t u = edges[edge_id].first, v = edges[edge_id].second;
             dbitsets[edge_bucket].set_bit_unsync(u);
             dbitsets[edge_bucket].set_bit_unsync(v);

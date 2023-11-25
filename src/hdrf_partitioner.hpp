@@ -37,7 +37,7 @@ class HdrfPartitioner : public Partitioner
     void assign_edge(int bucket, vid_t from, vid_t to, size_t edge_id)
     {
         writer.save_edge(from, to, bucket);
-        edge2bucket[edge_id] = bucket;
+        edgelist2bucket[edge_id] = bucket;
         occupied[bucket]++;
 
         is_boundarys[bucket].set_bit_unsync(from);

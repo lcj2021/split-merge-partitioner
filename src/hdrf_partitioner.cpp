@@ -42,7 +42,7 @@ HdrfPartitioner::HdrfPartitioner(std::string basefilename, bool need_k_split)
     occupied.assign(p, 0);
     vcount.assign(p, 0);
     capacity = (double)num_edges * 1.0 / p + 1; //will be used to as stopping criterion later
-    edge2bucket.assign(num_edges, -1);
+    edgelist2bucket.assign(num_edges, -1);
 
     degrees.resize(num_vertices);
     std::ifstream degree_file(degree_name(basefilename), std::ios::binary);

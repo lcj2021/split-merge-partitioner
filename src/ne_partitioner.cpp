@@ -43,7 +43,7 @@ NePartitioner::NePartitioner(std::string basefilename, bool need_k_split)
     is_cores.assign(p, dense_bitset(num_vertices));
     is_boundarys.assign(p, dense_bitset(num_vertices));
     dis.param(std::uniform_int_distribution<vid_t>::param_type(0, num_vertices - 1));
-    edge2bucket.assign(num_edges, kInvalidBid);
+    edgelist2bucket.assign(num_edges, kInvalidBid);
 
     Timer read_timer;
     read_timer.start();
@@ -97,14 +97,6 @@ void NePartitioner::assign_remaining()
             }
         }
     }
-}
-
-size_t NePartitioner::count_mirrors()
-{
-    size_t result = 0;
-    rep (i, p)
-        result += is_boundarys[i].popcount();
-    return result;
 }
 
 void NePartitioner::calculate_stats()
@@ -224,9 +216,6 @@ void NePartitioner::split()
     //     DLOG(INFO) << "edges in partition " << i << ": " << occupied[i];
     // size_t max_occupied = *std::max_element(occupied.begin(), occupied.end());
     // LOG(INFO) << "balance: " << (double)max_occupied / ((double)num_edges / p);
-    // size_t total_mirrors = count_mirrors();
-    // LOG(INFO) << "total mirrors: " << total_mirrors;
-    // LOG(INFO) << "replication factor: " << (double)total_mirrors / num_vertices;
     LOG(INFO) << "time used for partitioning: " << compute_timer.get_time();
 
     CHECK_EQ(assigned_edges, num_edges);

@@ -16,7 +16,6 @@ public:
     eid_t num_edges;
     std::vector<edge_t> edges;
     std::vector<vid_t> degrees;
-    std::vector<bid_t> edge2bucket;
     std::vector<bid_t> edgelist2bucket;
     mem_graph_t<vid_eid_t> mem_graph;
     virtual void split() = 0;

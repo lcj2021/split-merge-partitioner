@@ -41,9 +41,9 @@ FsmPartitioner::FsmPartitioner(std::string basefilename)
     bucket_info.assign(k * p, BucketInfo(num_vertices));
     for (int i = 0; i < k * p; ++ i) bucket_info[i].old_id = i;
 
-    edge2bucket.assign(num_edges, -1);
+    edgelist2bucket.assign(num_edges, -1);
     occupied.assign(p, 0);
-    bucket_edge_cnt.assign(FLAGS_p, 0);
+    num_bucket_edges.assign(FLAGS_p, 0);
 };
 
 void FsmPartitioner::merge()
@@ -223,7 +223,7 @@ void FsmPartitioner::calculate_stats()
         all_part_vertice_cnt += bucket_info[b].replicas;
         max_part_edge_cnt = std::max(max_part_edge_cnt, bucket_info[b].occupied);
         all_part_edge_cnt += bucket_info[b].occupied;
-        CHECK_EQ(bucket_info[b].occupied, bucket_edge_cnt[b]);
+        CHECK_EQ(bucket_info[b].occupied, num_bucket_edges[b]);
     }
 
     for (int b = 0; b < p; ++ b) 
@@ -322,7 +322,7 @@ void FsmPartitioner::split()
             // }
         } else {
             std::swap(edges, split_partitioner->edges);
-            std::swap(edge2bucket, split_partitioner->edge2bucket);
+            std::swap(edgelist2bucket, split_partitioner->edgelist2bucket);
             for (int bucket = 0; bucket < p * k; bucket++) {
                 std::swap(split_partitioner->is_boundarys[bucket], bucket_info[bucket].is_mirror);
                 std::swap(split_partitioner->occupied[bucket], bucket_info[bucket].occupied);
@@ -370,6 +370,6 @@ void FsmPartitioner::split()
     if (FLAGS_write) 
         LOG(INFO) << "Writing result...";
 
-    for (size_t i = 0; i < edge2bucket.size(); ++ i) 
-        writer.save_edge(edges[i].first, edges[i].second, edge2bucket[i]);
+    for (size_t i = 0; i < edgelist2bucket.size(); ++ i) 
+        writer.save_edge(edges[i].first, edges[i].second, edgelist2bucket[i]);
 }

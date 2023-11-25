@@ -68,8 +68,8 @@ class NePartitioner : public Partitioner
     void assign_edge(int bucket, vid_t from, vid_t to, size_t edge_id)
     {
         writer.save_edge(from, to, bucket);
-        CHECK_EQ(edge2bucket[edge_id], kInvalidBid);
-        edge2bucket[edge_id] = bucket;
+        CHECK_EQ(edgelist2bucket[edge_id], kInvalidBid);
+        edgelist2bucket[edge_id] = bucket;
         assigned_edges++;
         occupied[bucket]++;
         degrees[from]--;
@@ -172,7 +172,6 @@ class NePartitioner : public Partitioner
     }
 
     void assign_remaining();
-    size_t count_mirrors();
     void calculate_stats();
 
   public:

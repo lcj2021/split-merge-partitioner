@@ -25,14 +25,14 @@ private:
     std::string basefilename;
 
     // vid_t num_vertices;
-    size_t assigned_edges, num_h2h_edges;
+    eid_t assigned_edges, num_h2h_edges;
     bid_t p, bucket; 
     double average_degree;
-    size_t capacity;
-    size_t capacity_in_memory; // capacity per partition of in memory partitioning
-    size_t invalidated_edges_count; // number of edges removed in clean up phase overall
-    size_t min_size = 0; // currently smallest partition
-    size_t max_size = 0; // currently largest partition
+    eid_t capacity;
+    eid_t capacity_in_memory; // capacity per partition of in memory partitioning
+    eid_t num_invalidated_edges; // number of edges removed in clean up phase overall
+    eid_t min_size = 0; // currently smallest partition
+    eid_t max_size = 0; // currently largest partition
 
     bool write_out_partitions = false; // whether the partitions should be written to the out-file or not
     bool write_low_degree_edgelist = false; // whether edges incident to a low-degree vertex should be written out to a file. useful if this sub-graph should be analyzed separately.
@@ -41,12 +41,11 @@ private:
     // mem_graph_t<TAdj> mem_graph; // graph for in-memory processing
     double high_degree_factor;
     HepMinHeap<vid_t, vid_t> min_heap;
-    // std::vector<size_t> occupied;
+    // std::vector<eid_t> occupied;
     // std::vector<dense_bitset> is_boundarys; 
     dense_bitset is_in_a_core;
     dense_bitset is_high_degree;
     dense_bitset has_high_degree_neighbor;
-    // std::vector<size_t> degrees; // degrees of vertices//(num_vertices, 0);
 
 
     vid_t search_index_free_vertex = 0;
@@ -62,11 +61,6 @@ private:
     {        
         assigned_edges++;
         occupied[cbucket]++;
-
-        // CHECK_EQ(edge2bucket[edge_id], -1);
-        // if (edge2bucket[edge_id] != -1) return false;
-        // edge2bucket[edge_id] = cbucket;
-
         v_e.bid = cbucket;
 
         is_boundarys[cbucket].set_bit_unsync(from);
@@ -75,12 +69,10 @@ private:
         return true;
     }
 
-    bool assign_edge(int cbucket, vid_t from, vid_t to, size_t edge_id)
+    bool assign_edge(int cbucket, vid_t from, vid_t to, eid_t edge_id)
     {        
         assigned_edges++;
         occupied[cbucket]++;
-        // CHECK_EQ(edge2bucket[edge_id], -1);
-        // if (edge2bucket[edge_id] != -1) return false;
         edgelist2bucket[edge_id] = cbucket;
 
         is_boundarys[cbucket].set_bit_unsync(from);
@@ -265,10 +257,9 @@ private:
     void partition_in_memory();
     void in_memory_assign_remaining();
 
-    double compute_partition_score(vid_t u, vid_t v, int bucket_id); // returns HDRF score for edge (u,v) on partition <bucket_id>
+    double compute_partition_score(vid_t u, vid_t v, bid_t bucket_id); // returns HDRF score for edge (u,v) on partition <bucket_id>
     bid_t best_scored_partition(vid_t u, vid_t v); // returns bucket id where score is best for edge (u,v)
 
-    size_t count_mirrors();
     void compute_stats();
 
     // void random_streaming();

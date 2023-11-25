@@ -4,7 +4,7 @@
 #include "common.hpp"
 
 struct uint40_t {
-        uint64_t v:40;
+    uint64_t v:40;
 } __attribute__((packed));
 
 class adjlist_t
