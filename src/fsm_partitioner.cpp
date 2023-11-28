@@ -39,9 +39,9 @@ FsmPartitioner::FsmPartitioner(std::string basefilename)
     num_edges = split_partitioner->num_edges;
 
     bucket_info.assign(k * p, BucketInfo(num_vertices));
-    for (int i = 0; i < k * p; ++ i) bucket_info[i].old_id = i;
+    for (bid_t i = 0; i < k * p; ++i) bucket_info[i].old_id = i;
 
-    edgelist2bucket.assign(num_edges, -1);
+    edgelist2bucket.assign(num_edges, kInvalidBid);
     occupied.assign(p, 0);
     num_bucket_edges.assign(FLAGS_p, 0);
 };
@@ -49,7 +49,7 @@ FsmPartitioner::FsmPartitioner(std::string basefilename)
 void FsmPartitioner::merge()
 {
     size_t max_part_vertice_cnt = 0, all_part_vertice_cnt = 0; 
-    for (int b = 0; b < p * k; ++ b) {
+    for (bid_t b = 0; b < p * k; ++b) {
         bucket_info[b].replicas = bucket_info[b].is_mirror.popcount();
         max_part_vertice_cnt = std::max(max_part_vertice_cnt, bucket_info[b].replicas);
         all_part_vertice_cnt += bucket_info[b].replicas;
@@ -57,15 +57,15 @@ void FsmPartitioner::merge()
 
     // std::vector<vid_t> boundary_replicate_times(FLAGS_k * FLAGS_p + 1);
     // vid_t boundary_vertice_cnt = 0;
-    // for (vid_t vid = 0; vid < num_vertices; ++ vid) {
+    // for (vid_t vid = 0; vid < num_vertices; ++vid) {
     //     int cnt = 0;
     //     boundary_vertice_cnt ++;
-    //     for (int b = 0; b < FLAGS_k * FLAGS_p; ++ b) {
+    //     for (bid_t b = 0; b < FLAGS_k * FLAGS_p; ++b) {
     //         cnt += bucket_info[b].is_mirror.get(vid);
     //     }
     //     boundary_replicate_times[cnt] ++;
     // }
-    // for (int i = 0; i <= FLAGS_k * FLAGS_p; ++ i) {
+    // for (int i = 0; i <= FLAGS_k * FLAGS_p; ++i) {
     //     LOG(INFO) << i << ' ' << boundary_replicate_times[i] << ' ' << (double)boundary_replicate_times[i] / boundary_vertice_cnt;
     // }
 
@@ -76,14 +76,14 @@ void FsmPartitioner::merge()
 
 
     curr_bucket_id = 0;
-    std::unordered_map<int, int> valid_bucket;  // < old bucket, new bucket >
+    std::unordered_map<bid_t, bid_t> valid_bucket;  // < old bucket, new bucket >
 
     if (FLAGS_fastmerge) {
         valid_bucket = fast_merge();
     } else {
         valid_bucket = precise_merge();
     }
-    for (int b = 0; b < p * k; ++ b) 
+    for (bid_t b = 0; b < p * k; ++b) 
         DLOG(INFO)   << "Bucket_info " << bucket_info[b].old_id 
                     << " vertices: " << bucket_info[b].replicas 
                     << " edges: " << bucket_info[b].occupied
@@ -92,12 +92,12 @@ void FsmPartitioner::merge()
     // rearrange bucket after heuristic merging
     std::sort(bucket_info.begin(), bucket_info.end());
 
-    for (size_t b = 0; b < bucket_info.size(); ) {
+    for (eid_t b = 0; b < bucket_info.size(); ) {
         auto &[is_mirror, occupied, old_id, replicas, is_chosen] = bucket_info[b];
         if (is_chosen) {
             old_id = get_final_bucket(old_id);
             // std::cerr << "Is chosen, new old_id: " << old_id << ", replicas: " << replicas << '\n';
-            ++ b;
+            ++b;
         } else {
             std::swap(bucket_info[b], bucket_info.back());
             bucket_info.pop_back();
@@ -105,7 +105,7 @@ void FsmPartitioner::merge()
     }
     bucket_info.shrink_to_fit();
 
-    size_t curr_assigned_edges;
+    eid_t curr_assigned_edges;
     if (split_method == "hep") {
         curr_assigned_edges = rearrange_edge_hybrid(valid_bucket);
     } else {
@@ -115,16 +115,17 @@ void FsmPartitioner::merge()
     assigned_edges += curr_assigned_edges;
 }
 
-std::unordered_map<int, int> FsmPartitioner::fast_merge()
+std::unordered_map<bid_t, bid_t> FsmPartitioner::fast_merge()
 {
-    std::unordered_map<int, int> valid_bucket;  // < old bucket, new bucket >
+    std::unordered_map<bid_t, bid_t> valid_bucket;  // < old bucket, new bucket >
     
     // < mirror_cnt, partitions_inside, index_in_bucket_info, old_id >
-    std::priority_queue<std::tuple<int, int, int, int>, std::vector<std::tuple<int, int, int, int>>, std::greater<std::tuple<int, int, int, int>>> pq;  
-    for (int b = 0; b < FLAGS_p; ++ b) {
+    using bucket_item = std::tuple<vid_t, bid_t, bid_t, bid_t>;
+    std::priority_queue<bucket_item, std::vector<bucket_item>, std::greater<bucket_item>> pq;  
+    for (bid_t b = 0; b < FLAGS_p; ++b) {
         pq.emplace(0, 0, b, b);
     }
-    for (int b = 0; b < FLAGS_p * FLAGS_k; ++ b) {
+    for (bid_t b = 0; b < FLAGS_p * FLAGS_k; ++b) {
         auto &[is_mirror, occupied, old_id, replicas, is_chosen] = bucket_info[b];
         auto [mirror_cnt, partitions_inside, parent_bucket, parent_old_id] = pq.top();
         pq.pop();
@@ -148,28 +149,29 @@ std::unordered_map<int, int> FsmPartitioner::fast_merge()
     return valid_bucket;
 }
 
-std::unordered_map<int, int> FsmPartitioner::precise_merge()
+std::unordered_map<bid_t, bid_t> FsmPartitioner::precise_merge()
 {
-    std::unordered_map<int, int> valid_bucket;  // < old bucket, new bucket >
+    std::unordered_map<bid_t, bid_t> valid_bucket;  // < old bucket, new bucket >
 
     // < mirror_cnt, partitions_inside, index_in_bucket_info, old_id >
-    std::vector<std::tuple<int, int, int, int>> final_bucket;
-    for (int b = 0; b < p; ++ b) {
+    using bucket_item = std::tuple<vid_t, bid_t, bid_t, bid_t>;
+    std::vector<bucket_item> final_bucket;
+    for (bid_t b = 0; b < p; ++b) {
         final_bucket.emplace_back(0, 0, b, b);
     }
-    auto compute_new_bucket_size = [&](int bid_a, int bid_b) -> size_t {
+    auto compute_new_bucket_size = [&](bid_t bid_a, bid_t bid_b) {
         const auto &is_mirror_a = bucket_info[bid_a].is_mirror, &is_mirror_b = bucket_info[bid_b].is_mirror;
         dense_bitset new_bucket = is_mirror_a | is_mirror_b;
         return new_bucket.popcount();
     };
 
-    for (int b = 0; b < p * k; ++ b) {
+    for (bid_t b = 0; b < p * k; ++b) {
         auto &[is_mirror, occupied, old_id, replicas, is_chosen] = bucket_info[b];
 
-        int best_final_bucket = -1;
+        bid_t best_final_bucket = kInvalidBid;
         size_t min_size_after_merge = std::numeric_limits<size_t>::max();
 
-        for (size_t fb = 0; fb < final_bucket.size(); ++ fb) {
+        for (bid_t fb = 0; fb < final_bucket.size(); ++fb) {
             auto [mirror_cnt, partitions_inside, parent_bucket, parent_old_id] = final_bucket[fb];
             if (partitions_inside == FLAGS_k) continue;
             if (partitions_inside == 0) {
@@ -182,7 +184,7 @@ std::unordered_map<int, int> FsmPartitioner::precise_merge()
                 best_final_bucket = fb;
             }
         }
-        CHECK_NE(best_final_bucket, -1);
+        CHECK_NE(best_final_bucket, kInvalidBid);
 
         auto [mirror_cnt, partitions_inside, parent_bucket, parent_old_id] = final_bucket[best_final_bucket];
         if (partitions_inside == 0) {
@@ -215,7 +217,7 @@ void FsmPartitioner::calculate_stats()
 
     size_t max_part_vertice_cnt = 0, all_part_vertice_cnt = 0; 
     size_t max_part_edge_cnt = 0, all_part_edge_cnt = 0; 
-    for (int b = 0; b < p; ++ b) {
+    for (bid_t b = 0; b < p; ++b) {
         bucket_info[b].replicas = bucket_info[b].is_mirror.popcount();
         bucket2vcnt[b] = bucket_info[b].replicas;
         occupied[b] = bucket_info[b].occupied;
@@ -226,7 +228,7 @@ void FsmPartitioner::calculate_stats()
         CHECK_EQ(bucket_info[b].occupied, num_bucket_edges[b]);
     }
 
-    for (int b = 0; b < p; ++ b) 
+    for (bid_t b = 0; b < p; ++b) 
         LOG(INFO) << "Bucket_info: " << bucket_info[b].old_id 
                 << ", vertices: " << bucket_info[b].replicas 
                 << ", edges: " << bucket_info[b].occupied;
@@ -236,7 +238,7 @@ void FsmPartitioner::calculate_stats()
 
     double std_vertice_deviation = 0.0;
     double std_edge_deviation = 0.0;
-    for (int b = 0; b < p; ++ b) {
+    for (bid_t b = 0; b < p; ++b) {
         std_vertice_deviation += pow(bucket2vcnt[b] - avg_vertice_cnt, 2);
         std_edge_deviation += pow(occupied[b] - avg_edge_cnt, 2);
     }
@@ -269,14 +271,14 @@ void FsmPartitioner::calculate_stats()
 }
 
 
-int FsmPartitioner::merge_bucket(int dst, int src, bool &has_intersection)   // dst, src
+vid_t FsmPartitioner::merge_bucket(bid_t dst, bid_t src, bool &has_intersection)   // dst, src
 {
     auto &is_mirror_a = bucket_info[dst].is_mirror, &is_mirror_b = bucket_info[src].is_mirror;
     size_t mirror_cnt = 0;
-    for (size_t i = 0; i < is_mirror_a.size(); ++ i) {
+    for (size_t i = 0; i < is_mirror_a.size(); ++i) {
         if (is_mirror_a.get(i) == 1 || is_mirror_b.get(i) == 1) {
             is_mirror_a.set_bit_unsync(i);
-            ++ mirror_cnt;
+            ++mirror_cnt;
         }
         if (!has_intersection && is_mirror_a.get(i) == 1 && is_mirror_b.get(i) == 1) {
             has_intersection = true;
@@ -304,7 +306,7 @@ void FsmPartitioner::split()
             std::swap(degrees, split_partitioner->degrees);
             std::swap(mem_graph, split_partitioner->mem_graph);
             std::swap(edgelist2bucket, split_partitioner->edgelist2bucket);
-            for (int bucket = 0; bucket < p * k; bucket++) {
+            for (bid_t bucket = 0; bucket < p * k; ++bucket) {
                 std::swap(split_partitioner->is_boundarys[bucket], bucket_info[bucket].is_mirror);
                 std::swap(split_partitioner->occupied[bucket], bucket_info[bucket].occupied);
             }
@@ -323,7 +325,7 @@ void FsmPartitioner::split()
         } else {
             std::swap(edges, split_partitioner->edges);
             std::swap(edgelist2bucket, split_partitioner->edgelist2bucket);
-            for (int bucket = 0; bucket < p * k; bucket++) {
+            for (bid_t bucket = 0; bucket < p * k; ++bucket) {
                 std::swap(split_partitioner->is_boundarys[bucket], bucket_info[bucket].is_mirror);
                 std::swap(split_partitioner->occupied[bucket], bucket_info[bucket].occupied);
             }
@@ -366,10 +368,19 @@ void FsmPartitioner::split()
     } else {
         CHECK_EQ(check_edge(), true);
     }
+
+    std::cerr << "split_method: " << split_method << '\n';
     
     if (FLAGS_write) 
         LOG(INFO) << "Writing result...";
 
-    for (size_t i = 0; i < edgelist2bucket.size(); ++ i) 
-        writer.save_edge(edges[i].first, edges[i].second, edgelist2bucket[i]);
+    if (split_method == "hep") {
+        save_edge_hybrid();
+    } else {
+        for (eid_t i = 0; i < edgelist2bucket.size(); ++i) {
+            writer.save_edge(edges[i].first, edges[i].second, edgelist2bucket[i]);
+        }
+    }
+
+    
 }

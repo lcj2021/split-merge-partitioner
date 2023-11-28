@@ -12,15 +12,15 @@
 /* Neighbor Expansion (NE) */
 class NePartitioner : public Partitioner
 {
-  private:
+private:
     const double BALANCE_RATIO = 1.00;
 
     std::string basefilename;
 
-    size_t assigned_edges;
+    eid_t assigned_edges;
     bid_t p, bucket;
     double average_degree;
-    size_t capacity;
+    eid_t capacity;
 
     // std::vector<edge_t> edges;
     graph_t adj_out, adj_in;
@@ -40,25 +40,25 @@ class NePartitioner : public Partitioner
 
     int check_edge(const edge_t *e)
     {
-        rep (i, bucket) {
-            auto &is_boundary = is_boundarys[i];
+        for (bid_t b = 0; b < bucket; ++b) {
+            auto &is_boundary = is_boundarys[b];
             if (is_boundary.get(e->first) && is_boundary.get(e->second) &&
-                occupied[i] < capacity) {
-                return i;
+                occupied[b] < capacity) {
+                return b;
             }
         }
 
-        rep (i, bucket) {
-            auto &is_core = is_cores[i], &is_boundary = is_boundarys[i];
+        for (bid_t b = 0; b < bucket; ++b) {
+            auto &is_core = is_cores[b], &is_boundary = is_boundarys[b];
             if ((is_core.get(e->first) || is_core.get(e->second)) &&
-                occupied[i] < capacity) {
+                occupied[b] < capacity) {
                 if (is_core.get(e->first) && degrees[e->second] > average_degree)
                     continue;
                 if (is_core.get(e->second) && degrees[e->first] > average_degree)
                     continue;
                 is_boundary.set_bit(e->first);
                 is_boundary.set_bit(e->second);
-                return i;
+                return b;
             }
         }
 
@@ -70,10 +70,10 @@ class NePartitioner : public Partitioner
         writer.save_edge(from, to, bucket);
         CHECK_EQ(edgelist2bucket[edge_id], kInvalidBid);
         edgelist2bucket[edge_id] = bucket;
-        assigned_edges++;
-        occupied[bucket]++;
-        degrees[from]--;
-        degrees[to]--;
+        ++assigned_edges;
+        ++occupied[bucket];
+        --degrees[from];
+        --degrees[to];
     }
 
     void add_boundary(vid_t vid)
@@ -110,7 +110,7 @@ class NePartitioner : public Partitioner
                         std::swap(neighbors[i], neighbors.back());
                         neighbors.pop_back();
                     } else
-                        i++;
+                        ++i;
                 } else {
                     std::swap(neighbors[i], neighbors.back());
                     neighbors.pop_back();
@@ -144,7 +144,7 @@ class NePartitioner : public Partitioner
     {
         rand_vertice_id = dis(gen);
         vid = rand_vertice_id;
-        for (size_t offset = 0; offset < num_vertices; ++ offset) {
+        for (vid_t offset = 0; offset < num_vertices; ++ offset) {
             vid = (vid + 1) % num_vertices;
             if (is_cores[bucket].get(vid)) continue;
             // if (is_in_a_core.get(vid)) continue;
@@ -174,7 +174,7 @@ class NePartitioner : public Partitioner
     void assign_remaining();
     void calculate_stats();
 
-  public:
+public:
     NePartitioner(std::string basefilename, bool need_k_split);
     void split();
 };

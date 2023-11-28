@@ -23,20 +23,19 @@ private:
     std::string basefilename;
 
     size_t assigned_edges;
-    int p, k;
+    bid_t p, k;
 
     // mem_graph_t<vid_eid_t> mem_graph;
 
-    std::vector<size_t> num_bucket_edges;
+    std::vector<eid_t> num_bucket_edges;
 
     struct BucketInfo {
         dense_bitset is_mirror;
         size_t occupied, old_id, replicas;
-        bool is_chosen;
+        bool is_chosen{false};
         BucketInfo(vid_t num_vertices) {
             is_mirror = dense_bitset(num_vertices);
             old_id = occupied = replicas = 0;
-            is_chosen = false;
         }
         bool operator < (const BucketInfo& rhs) const {
             if (is_chosen != rhs.is_chosen) return is_chosen > rhs.is_chosen;
@@ -57,7 +56,7 @@ private:
             if (degrees[from] > mem_graph.high_degree_threshold) continue;
             for (vid_t i = 0; i < degrees[from]; ++i) {
                 auto& to = mem_graph.neighbors[offset + i];
-                auto& edge_bucket = reinterpret_cast<uint16_t&>(to.bid);
+                auto& edge_bucket = reinterpret_cast<bid_t&>(to.bid);
                 if (edge_bucket == kInvalidBid) {
                     continue;
                 }
@@ -105,7 +104,7 @@ private:
         return num_adjlist_edges + num_edgelist_edges;
     }
     
-    eid_t rearrange_edge(std::vector<edge_t> &e, const std::unordered_map<int, int> &valid_bucket)
+    eid_t rearrange_edge(std::vector<edge_t> &e, const std::unordered_map<bid_t, bid_t> &valid_bucket)
     {
         eid_t curr_assigned_edges = 0;
         for (eid_t edge_id = 0; edge_id < e.size(); ++edge_id) {
@@ -123,10 +122,10 @@ private:
         return curr_assigned_edges;
     }
 
-    size_t rearrange_edge_hybrid(const std::unordered_map<int, int> &valid_bucket)
+    size_t rearrange_edge_hybrid(const std::unordered_map<bid_t, bid_t> &valid_bucket)
     {
         return iterate_edges( 
-            [this, &valid_bucket](uint16_t& edge_bucket, 
+            [this, &valid_bucket](bid_t& edge_bucket, 
                 const vid_t& u, const vid_t& v) {
                 if (valid_bucket.count(edge_bucket)) {
                     edge_bucket = valid_bucket.at(edge_bucket);
@@ -144,19 +143,18 @@ private:
         std::vector<dense_bitset> dbitsets(p, dense_bitset(num_vertices));
         for (vid_t vid = 0; vid < num_vertices; ++vid) {
             bool assigned_to_a_part = false;
-            for (int b = 0; b < p; ++b) {
+            for (bid_t b = 0; b < p; ++b) {
                 if (bucket_info[b].is_mirror.get(vid)) {
                     assigned_to_a_part = true;
                     break;
                 }
             }
             if (!assigned_to_a_part) {
-                exit(0);
                 return false;
             }
         }
         iterate_edges(
-            [&dbitsets](uint16_t& edge_bucket, const vid_t& u, const vid_t& v) {
+            [&dbitsets](bid_t& edge_bucket, const vid_t& u, const vid_t& v) {
                 dbitsets[edge_bucket].set_bit_unsync(u);
                 dbitsets[edge_bucket].set_bit_unsync(v);
             }
@@ -175,10 +173,17 @@ private:
             }   
             return true;
         };
-        for (int b = 0; b < p; ++b) {
+        for (bid_t b = 0; b < p; ++b) {
             if (!equal_dbitset(dbitsets[b], bucket_info[b].is_mirror)) { return false; }
         }
         return true;
+    }
+
+    void save_edge_hybrid()
+    {
+        iterate_edges([this](bid_t& edge_bucket, const vid_t& u, const vid_t& v) {
+            writer.save_edge(u, v, edge_bucket);
+        });
     }
 
     bool check_edge()
@@ -186,14 +191,13 @@ private:
         std::vector<dense_bitset> dbitsets(p, dense_bitset(num_vertices));
         for (vid_t vid = 0; vid < num_vertices; ++vid) {
             bool assigned_to_a_part = false;
-            for (int b = 0; b < p; ++b) {
+            for (bid_t b = 0; b < p; ++b) {
                 if (bucket_info[b].is_mirror.get(vid)) {
                     assigned_to_a_part = true;
                     break;
                 }
             }
             if (!assigned_to_a_part) {
-                exit(0);
                 return false;
             }
         }
@@ -211,15 +215,15 @@ private:
             }   
             return true;
         };
-        for (int b = 0; b < p; ++b) {
+        for (bid_t b = 0; b < p; ++b) {
             if (!equal_dbitset(dbitsets[b], bucket_info[b].is_mirror)) { return false; }
         }
         return true;
     }
 
-    std::unordered_map<int, int> mp;
-    int curr_bucket_id;
-    int get_final_bucket(int bucket_id)
+    std::unordered_map<bid_t, bid_t> mp;
+    bid_t curr_bucket_id;
+    bid_t get_final_bucket(bid_t bucket_id)
     {
         if (mp.count(bucket_id)) {
             return mp[bucket_id];
@@ -231,9 +235,9 @@ private:
     void merge();
     void calculate_stats();
 
-    int merge_bucket(int dst, int src, bool &has_intersection);
-    std::unordered_map<int, int> fast_merge();
-    std::unordered_map<int, int> precise_merge();
+    vid_t merge_bucket(bid_t dst, bid_t src, bool &has_intersection);
+    std::unordered_map<bid_t, bid_t> fast_merge();
+    std::unordered_map<bid_t, bid_t> precise_merge();
 
 public:
     FsmPartitioner(std::string basefilename);

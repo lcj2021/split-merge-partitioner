@@ -84,7 +84,6 @@ void NePartitioner::assign_remaining()
             }
         }
     }
-        
 
     for (vid_t i = 0; i < num_vertices; ++i) {
         if (is_boundary.get(i)) {
@@ -102,32 +101,33 @@ void NePartitioner::assign_remaining()
 void NePartitioner::calculate_stats()
 {
     std::cerr << std::string(25, '#') << " Calculating Statistics " << std::string(25, '#') << '\n';
-    std::vector<size_t> bucket2vcnt(p, 0);
-    rep (i, p) {
-        bucket2vcnt[i] = is_boundarys[i].popcount();
+    std::vector<vid_t> num_bucket_vertices(p, 0);
+    for (bid_t b = 0; b < p; ++b) {
+        num_bucket_vertices[b] = is_boundarys[b].popcount();
     }
-    size_t max_part_vertice_cnt = *std::max_element(bucket2vcnt.begin(), bucket2vcnt.end());
-    size_t all_part_vertice_cnt = accumulate(bucket2vcnt.begin(), bucket2vcnt.end(), (size_t)0);
-    size_t max_part_edge_cnt = *std::max_element(occupied.begin(), occupied.end());
-    size_t all_part_edge_cnt = accumulate(occupied.begin(), occupied.end(), (size_t)0);
+    vid_t max_part_vertice_cnt = *std::max_element(num_bucket_vertices.begin(), num_bucket_vertices.end());
+    vid_t all_part_vertice_cnt = accumulate(num_bucket_vertices.begin(), num_bucket_vertices.end(), (vid_t)0);
+    eid_t max_part_edge_cnt = *std::max_element(occupied.begin(), occupied.end());
+    eid_t all_part_edge_cnt = accumulate(occupied.begin(), occupied.end(), (eid_t)0);
 
-    for (bid_t b = 0; b < p; ++ b) 
+    for (bid_t b = 0; b < p; ++b) {
         LOG(INFO) << "Bucket_info: " << b
-                << ", vertices: " << bucket2vcnt[b]
+                << ", vertices: " << num_bucket_vertices[b]
                 << ", edges: " << occupied[b];
+    }
     
-    double avg_vertice_cnt = (double)all_part_vertice_cnt / (p);
-    double avg_edge_cnt = (double)all_part_edge_cnt / (p);
+    double avg_vertice_cnt = static_cast<double>(all_part_vertice_cnt) / p;
+    double avg_edge_cnt = static_cast<double>(all_part_edge_cnt) / p;
 
     double std_vertice_deviation = 0.0;
     double std_edge_deviation = 0.0;
-    for (bid_t b = 0; b < p; ++ b) {
-        std_vertice_deviation += pow(bucket2vcnt[b] - avg_vertice_cnt, 2);
+    for (bid_t b = 0; b < p; ++b) {
+        std_vertice_deviation += pow(num_bucket_vertices[b] - avg_vertice_cnt, 2);
         std_edge_deviation += pow(occupied[b] - avg_edge_cnt, 2);
     }
-    std_vertice_deviation = sqrt((double)std_vertice_deviation / p);
-    std_edge_deviation = sqrt((double)std_edge_deviation / p);
-    
+    std_vertice_deviation = sqrt(static_cast<double>(std_vertice_deviation) / p);
+    std_edge_deviation = sqrt(static_cast<double>(std_edge_deviation) / p);
+
     LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
     LOG(INFO) << "Max vertice count / avg vertice count: "
               << (double)max_part_vertice_cnt / ((double)num_vertices / (p));
@@ -164,7 +164,7 @@ void NePartitioner::split()
 
     LOG(INFO) << "partitioning...";
     compute_timer.start();
-    for (bucket = 0; bucket < p - 1; bucket++) {
+    for (bucket = 0; bucket < p - 1; ++bucket) {
         std::cerr << bucket << ", ";
         DLOG(INFO) << "sample size: " << adj_out.num_edges();
         while (occupied[bucket] < capacity) {
@@ -196,9 +196,9 @@ void NePartitioner::split()
         for (int direction = 0; direction < 2; ++direction) {
             for (vid_t vid = 0; vid < num_vertices; ++vid) {
                 adjlist_t &neighbors = direction ? adj_out[vid] : adj_in[vid];
-                for (size_t i = 0; i < neighbors.size();) {
+                for (vid_t i = 0; i < neighbors.size();) {
                     if (edges[neighbors[i].v].valid()) {
-                        i++;
+                        ++i;
                     } else {
                         std::swap(neighbors[i], neighbors.back());
                         neighbors.pop_back();
@@ -211,11 +211,7 @@ void NePartitioner::split()
     std::cerr << bucket << std::endl;
     assign_remaining();
     compute_timer.stop();
-    // LOG(INFO) << "expected edges in each partition: " << num_edges / p;
-    // rep (i, p)
-    //     DLOG(INFO) << "edges in partition " << i << ": " << occupied[i];
-    // size_t max_occupied = *std::max_element(occupied.begin(), occupied.end());
-    // LOG(INFO) << "balance: " << (double)max_occupied / ((double)num_edges / p);
+
     LOG(INFO) << "time used for partitioning: " << compute_timer.get_time();
 
     CHECK_EQ(assigned_edges, num_edges);
