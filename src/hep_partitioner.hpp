@@ -57,28 +57,26 @@ private:
 
     void in_memory_clean_up_neighbors(vid_t vid, dense_bitset & is_core, dense_bitset & is_boundary);
 
-    bool assign_edge(int cbucket, vid_t from, TAdj& v_e)
-    {        
-        assigned_edges++;
-        occupied[cbucket]++;
+    void assign_edge(bid_t cbucket, vid_t from, TAdj& v_e)
+    {
+        writer.save_edge(from, v_e.vid, cbucket);
+        ++assigned_edges;
+        ++occupied[cbucket];
         v_e.bid = cbucket;
 
         is_boundarys[cbucket].set_bit_unsync(from);
         is_boundarys[cbucket].set_bit_unsync(v_e.vid);
-
-        return true;
     }
 
-    bool assign_edge(int cbucket, vid_t from, vid_t to, eid_t edge_id)
+    void assign_edge(bid_t cbucket, vid_t from, vid_t to, eid_t edge_id)
     {        
-        assigned_edges++;
-        occupied[cbucket]++;
+        writer.save_edge(from, to, cbucket);
+        ++assigned_edges;
+        ++occupied[cbucket];
         edgelist2bucket[edge_id] = cbucket;
 
         is_boundarys[cbucket].set_bit_unsync(from);
         is_boundarys[cbucket].set_bit_unsync(to);
-
-        return true;
     }
 
     void in_memory_add_boundary(vid_t vid)
@@ -108,7 +106,7 @@ private:
 		}
 		auto &neighbors = mem_graph[vid].adj;
 		vid_t count = 0;
-		for (; count < mem_graph[vid].size_out(); count++) //for the adj_out neighbors
+		for (; count < mem_graph[vid].size_out(); ++count) //for the adj_out neighbors
 		{
 			if (occupied[bucket] >= capacity) {
                 // full, stop adding vertices to the boundary of this bucket
@@ -163,7 +161,7 @@ private:
 			}
 		}
         // for the adj_in neighbors
-		for (; count < mem_graph[vid].size(); count++) {
+		for (; count < mem_graph[vid].size(); ++count) {
 			if (occupied[bucket] >= capacity) {
 				bucket_full = true;
 			} 
@@ -232,7 +230,7 @@ private:
     	}
     	in_memory_add_boundary(vid);
         // Set all neighbors of vid to boundary
-    	for (vid_t i = 0; i < mem_graph[vid].size(); i++) { 
+    	for (vid_t i = 0; i < mem_graph[vid].size(); ++i) { 
     		in_memory_add_boundary(mem_graph[vid].adj[i].vid);
     	}
     }
@@ -245,12 +243,31 @@ private:
        	* find a vertex to start expansion with
        	*/
        	while ((mem_graph[vid].size() == 0 || is_in_a_core.get(vid)) && vid < num_vertices) {
-       	   	vid++;
+       	   	++vid;
        	}
 
        	search_index_free_vertex = vid;
         // searched to the end, did not find free vertex
         return vid != num_vertices;
+    }
+
+    bool check_edge_hybrid()
+    {
+        std::vector<dense_bitset> dbitsets(p, dense_bitset(num_vertices));
+        for (vid_t vid = 0; vid < num_vertices; ++vid) {
+            bool assigned_to_a_part = false;
+            for (bid_t b = 0; b < p; ++b) {
+                if (is_boundarys[b].get(vid)) {
+                    assigned_to_a_part = true;
+                    break;
+                }
+            }
+            if (!assigned_to_a_part) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     void load_in_memory(std::string basefilename, std::ifstream &fin);

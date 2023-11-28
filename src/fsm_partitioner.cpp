@@ -369,8 +369,6 @@ void FsmPartitioner::split()
         CHECK_EQ(check_edge(), true);
     }
 
-    std::cerr << "split_method: " << split_method << '\n';
-    
     if (FLAGS_write) 
         LOG(INFO) << "Writing result...";
 

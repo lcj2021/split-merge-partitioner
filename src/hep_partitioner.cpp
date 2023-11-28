@@ -169,12 +169,7 @@ void HepPartitioner<TAdj>::in_memory_assign_remaining()
 			vid_t i = 0;
 			for(; i < mem_graph[vid].size_out(); ++i) {
 				bid_t target = best_scored_partition(vid, neighbors[i].vid);
-                bool ok;
-				// ok = assign_edge(target, vid, neighbors[i].vid, neighbors[i].eid);
-				ok = assign_edge(target, vid, neighbors[i]);
-                if (!ok) {
-                    LOG(INFO) << "Could not assign edge " << vid << " " << neighbors[i].vid << std::endl;
-                }
+                assign_edge(target, vid, neighbors[i]);
 			}
 
 			// in case the vertex has high degree neighbors, the edges from
@@ -185,12 +180,7 @@ void HepPartitioner<TAdj>::in_memory_assign_remaining()
 				{
 					if (is_high_degree.get(neighbors[i].vid)) {
 						bid_t target = best_scored_partition(neighbors[i].vid, vid);
-						bool ok;
-                        // ok = assign_edge(target, neighbors[i].vid, vid, neighbors[i].eid);
-                        ok = assign_edge(target, neighbors[i].vid, neighbors[i]);
-                        if (!ok) {
-                            LOG(INFO) << "Could not assign edge " << vid << " " << neighbors[i].vid << std::endl;
-                        }
+                        assign_edge(target, vid, neighbors[i]);
 					}
 				}
 
@@ -493,7 +483,7 @@ void HepPartitioner<TAdj>::split()
     calculate_stats();
 
     CHECK_EQ(assigned_edges, num_edges);
-    // CHECK_EQ(check_edge_hybrid(), 1);
+    CHECK_EQ(check_edge_hybrid(), 1);
 
     total_time.stop();
     LOG(INFO) << "total partition time: " << total_time.get_time();
