@@ -29,6 +29,8 @@ private:
     boost::unordered_map<std::tuple<vid_t, vid_t>, size_t> uv2edgeid;
     size_t curr_edge_cnt;
 
+    edgepart_writer<vid_t, uint16_t> writer;
+
     struct BucketInfo {
         dense_bitset is_mirror;
         size_t occupied, old_id, replicas;
@@ -217,7 +219,7 @@ private:
     }
 
 public:
-	Vertex2EdgePart(std::string basefilename);
+	Vertex2EdgePart(std::string basefilename, bool need_k_split);
 	virtual ~Vertex2EdgePart();
 
 	void split();

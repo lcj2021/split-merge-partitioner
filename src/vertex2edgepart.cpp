@@ -18,8 +18,9 @@
 
 #include "vertex2edgepart.hpp"
 
-Vertex2EdgePart::Vertex2EdgePart(std::string basefilename): rd(), gen(rd()) {
+Vertex2EdgePart::Vertex2EdgePart(std::string basefilename, bool need_k_split): rd(), gen(rd()), writer(basefilename, !need_k_split && FLAGS_write) {
 	this->basefilename = basefilename;
+    std::cerr << basefilename << '\n';
     CHECK_NE(FLAGS_p, 0); p = FLAGS_p;
     CHECK_NE(FLAGS_k, 0); k = FLAGS_k;
 }
@@ -236,6 +237,8 @@ Vertex2EdgePart::split() {
     merge();
     CHECK_EQ(assigned_vertices, num_vertices);
 
+    if (FLAGS_write) 
+        LOG(INFO) << "Writing result...";
     for (const auto &edge : edges) {
         vid_t from = edge.first, to = edge.second;
         int target_p = vertex2edgepartID(from, to);
@@ -243,6 +246,7 @@ Vertex2EdgePart::split() {
         is_boundarys[target_p].set_bit_unsync(from);
         is_boundarys[target_p].set_bit_unsync(to);
         // from --, to --;
+        writer.save_edge(from, to, target_p);
     }
 
 	calculate_stats();

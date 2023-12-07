@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     else if (FLAGS_method == "e2a")
         partitioner = std::make_unique<Edgelist2Adjlist>(FLAGS_filename);
     else if (FLAGS_method.substr(0, 3) == "v2e")
-        partitioner = std::make_unique<Vertex2EdgePart>(FLAGS_filename);
+        partitioner = std::make_unique<Vertex2EdgePart>(FLAGS_filename, false);
     else if (FLAGS_method == "test")
         partitioner = std::make_unique<Test>(FLAGS_filename);
     LOG(INFO) << "partition method: " << FLAGS_method;
