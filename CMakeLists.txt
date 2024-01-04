@@ -23,7 +23,8 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_EXE_LINK_FLAGS_RELEASE} -Ofast ")
 FIND_PACKAGE(OpenMP REQUIRED)
 INCLUDE_DIRECTORIES(${OpenMP_CXX_INCLUDE_DIRS})
 
-add_executable (main
+add_executable (
+    main
     src/main.cpp
     src/util.cpp
     src/graph.cpp
@@ -36,9 +37,11 @@ add_executable (main
     src/hep_partitioner.cpp
     src/fennel_partitioner.cpp
     src/bpart_partitioner.cpp
+    src/hybridbl_partitioner.cpp
     src/vertex2edgepart.cpp
     src/test.cpp
-    src/conversions.cpp)
+    src/conversions.cpp
+)
 
 target_link_libraries(
     main 
