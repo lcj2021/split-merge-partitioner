@@ -38,7 +38,7 @@ private:
     std::unordered_map<vid_t, bid_t> root_bucket;
 
     // degree threshold 
-    vid_t degree_threshold = 128;
+    vid_t degree_threshold = 100;
     // radius threshold
     vid_t gamma = 3;
     eid_t fusion_threshold = 1'000'000;
@@ -48,9 +48,9 @@ private:
 
     // V[vid] = 1, if vid is handled
     dense_bitset V;
-    vid_t free_vertex;
+    std::vector<vid_t> free_vertex;
     // vertex id, dist from super
-    std::queue<std::tuple<vid_t, vid_t, vid_t>> Q;
+    std::vector<std::queue<std::tuple<vid_t, vid_t, vid_t>>> Q;
 
     vid_t rand_vertice_id;
     std::random_device rd;
@@ -69,38 +69,36 @@ private:
         is_boundarys[bucket].set_bit_unsync(to);
         ++assigned_edges;
         ++occupied[bucket];
-        // --degrees[from];
-        // --degrees[to];
     }
 
-    bool get_free_vertex_by_rand()
-    {
-        free_vertex = dis(gen);
-        vid_t vid = free_vertex;
-        for (vid_t offset = 0; offset < num_vertices; ++offset) {
-            vid = (free_vertex + offset) % num_vertices;
-            if (V.get(vid) == 1) continue;
-            free_vertex = vid;
-            return true;
-        }
-        return false;
-    }
+    // bool get_free_vertex_by_rand()
+    // {
+    //     free_vertex = dis(gen);
+    //     vid_t vid = free_vertex;
+    //     for (vid_t offset = 0; offset < num_vertices; ++offset) {
+    //         vid = (free_vertex + offset) % num_vertices;
+    //         if (V.get(vid) == 1) continue;
+    //         free_vertex = vid;
+    //         return true;
+    //     }
+    //     return false;
+    // }
 
-    bool get_free_vertex()
+    bool get_free_vertex(bid_t machine)
     {
-        while (free_vertex < num_vertices
-            && V.get(free_vertex) == 1) {
-            ++free_vertex;
+        while (free_vertex[machine] < num_vertices
+            && V.get(free_vertex[machine]) == 1) {
+            free_vertex[machine] += p;
         }
-        if (free_vertex == num_vertices)
+        if (free_vertex[machine] >= num_vertices)
             return false;
         return true;
     }
 
     void calculate_stats();
-    void init_fusion(vid_t vid, vid_t dist);
-    void fusion(vid_t vid, vid_t root, vid_t dist);
-    void fission(vid_t vid);
+    void init_fusion(bid_t machine, vid_t vid, vid_t dist);
+    void fusion(bid_t machine, vid_t vid, vid_t root, vid_t dist);
+    void fission(bid_t machine, vid_t vid);
 
 public:
     HybridBLPartitioner(std::string basefilename, bool need_k_split);

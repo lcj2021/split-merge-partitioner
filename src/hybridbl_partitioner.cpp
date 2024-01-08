@@ -40,6 +40,8 @@ HybridBLPartitioner::HybridBLPartitioner(std::string basefilename, bool need_k_s
     fission_occupy.resize(p);
     fusion_occupy.resize(p);
     LOG(INFO) << "average_degree: " << average_degree;
+    LOG(INFO) << "degree_threshold: " << degree_threshold;
+    LOG(INFO) << "gamma: " << gamma;
     assigned_edges = 0;
     capacity = static_cast<double>(num_edges) * BALANCE_RATIO / p + 1;
     occupied.assign(p, 0);
@@ -50,8 +52,11 @@ HybridBLPartitioner::HybridBLPartitioner(std::string basefilename, bool need_k_s
     dis.param(std::uniform_int_distribution<vid_t>::param_type(0, num_vertices - 1));
     edgelist2bucket.assign(num_edges, kInvalidBid);
 
+    Q.resize(p);
     V = dense_bitset(num_vertices);
     super.resize(num_vertices, kInvalidVid);
+    free_vertex.resize(p, 0);
+    std::iota(free_vertex.begin(), free_vertex.end(), 0);
 
 
     Timer read_timer;
@@ -141,50 +146,52 @@ void HybridBLPartitioner::split()
     compute_timer.start();
     
     // V is not empty
-    // for (int iter = 0; iter < 50000; ++iter) {
     while (true) {
-        if (Q.empty()) {
-            if (!get_free_vertex()) {
-                break;
-            }
-            auto vid = free_vertex;
-            // LOG(INFO) << "free_vertex: " << vid;
-            // if (degrees[vid] < degree_threshold && super[vid] == kInvalidVid) {
-            if (adj_in[vid].size() < degree_threshold && super[vid] == kInvalidVid) {
-                // InitFusion(vid)
-                // LOG(INFO) << "InitFusion: " << vid;
-                init_fusion(vid, 0);
-                // LOG(INFO) << "End InitFusion: " << vid;
+        bool stop = true;
+        for (bid_t m = 0; m < p; ++m) {
+            if (Q[m].empty()) {
+                bool has_free_vertex = get_free_vertex(m);
+                stop &= !has_free_vertex;
+                if (!has_free_vertex) {
+                    continue;
+                }
 
-            // } else if (degrees[vid] >= degree_threshold) {
-            } else if (adj_in[vid].size() >= degree_threshold) {
-                // Fission(vid)
-                // LOG(INFO) << "Fission: " << vid;
-                fission(vid);
+                auto vid = free_vertex[m];
+                // if (degrees[vid] < degree_threshold) {
+                if (adj_in[vid].size() < degree_threshold && super[vid] == kInvalidVid) {
+                    // InitFusion(vid)
+                    assert(super[vid] == kInvalidVid);
+                    init_fusion(m, vid, 0);
+
+                // } else if (degrees[vid] >= degree_threshold) {
+                } else if (adj_in[vid].size() >= degree_threshold) {
+                    // Fission(vid)
+                    fission(m, vid);
+                }
+            } else {
+                stop = false;
+                auto [uid, root, dist] = Q[m].front();
+                Q[m].pop();
+                if (dist < gamma && super[uid] == kInvalidVid) {
+                // if (root_assigned[root] < fusion_threshold && super[uid] == kInvalidVid) {
+                    // Fusion(uid)
+                    fusion(m, uid, root, dist);
+                }
             }
-        } else {
-            auto [uid, root, dist] = Q.front();
-            Q.pop();
-            // LOG(INFO) << "Expand to(uid, dist): " << uid << ' ' << dist 
-            //         << ", super: " << super[uid];
-            if (dist < gamma && super[uid] == kInvalidVid) {
-            // if (root_assigned[root] < fusion_threshold && super[uid] == kInvalidVid) {
-                // Fusion(uid)
-                // LOG(INFO) << "Fusion(uid, dist): " << uid << ' ' << dist;
-                fusion(uid, root, dist);
-            }
+        }
+        if (stop) {
+            break;
         }
     }
 
     compute_timer.stop();
 
     LOG(INFO) << "time used for partitioning: " << compute_timer.get_time();
-    LOG(INFO) << assigned_edges << ' ' << num_edges;
     LOG(INFO) << "num_visit(V, E): " << num_visit_vertices << ' ' << num_visit_edges;
     CHECK_EQ(assigned_edges, num_edges);
 
-    // total_time.stop();
-    // LOG(INFO) << "total partition time: " << total_time.get_time();
+    total_time.stop();
+    LOG(INFO) << "total partition time: " << total_time.get_time();
     calculate_stats();
     eid_t sum = 0;
     for (bid_t b = 0; b < p; ++b) {
@@ -200,7 +207,7 @@ void HybridBLPartitioner::split()
     LOG(INFO) << "max_assigned: " << max_assigned;
 }
 
-void HybridBLPartitioner::init_fusion(vid_t vid, vid_t dist)
+void HybridBLPartitioner::init_fusion(bid_t machine, vid_t vid, vid_t dist)
 {
     super[vid] = vid;
     bid_t candidate = kInvalidBid;
@@ -212,15 +219,14 @@ void HybridBLPartitioner::init_fusion(vid_t vid, vid_t dist)
         }
     }
     root_bucket[vid] = candidate;
-    fusion(vid, vid, dist);
+    fusion(machine, vid, vid, dist);
 }
 
-void HybridBLPartitioner::fusion(vid_t vid, vid_t root, vid_t dist)
+void HybridBLPartitioner::fusion(bid_t machine, vid_t vid, vid_t root, vid_t dist)
 {
     // LOG(INFO) << "Fussion function begin(vid, dist, ind): " 
     //     << vid << ' ' << dist << ' ' 
     //     << adj_in[vid].size() << ' ' << adj_out[vid].size();
-    // if (root_assigned[root] >= fusion_threshold) return;
     ++num_visit_vertices;
     V.set(vid, 1);
     vid_t current_super = super[root];
@@ -231,35 +237,45 @@ void HybridBLPartitioner::fusion(vid_t vid, vid_t root, vid_t dist)
         adjlist_t &neighbors = direction ? adj_out[vid] : adj_in[vid];
         for (vid_t i = 0; i < neighbors.size(); ++i) {
             eid_t eid = neighbors[i].v;
+            assert(eid < num_edges && eid >= 0);
             if (edgelist2bucket[eid] != kInvalidBid) continue;
             num_visit_edges += 1;
 
             vid_t &uid = direction ? edges[eid].second : edges[eid].first;
-            // if (super[uid] != kInvalidVid) continue;
 
-            // super[uid] = current_super;
-            assign_edge(current_super_bid, vid, uid, eid);
+            assign_edge(current_super_bid, direction ? vid : uid, direction ? uid : vid, eid);
+            // if (direction == 0) {
+            //     assign_edge(current_super_bid, vid, uid, eid);
+            // } else {
+            //     assign_edge(current_super_bid, uid, vid, eid);
+            // }
             ++fusion_occupy[current_super_bid];
             ++root_assigned[root];
-            Q.push({uid, root, dist + 1});
+            // if (uid % p != machine) continue;
+            Q[machine].push({uid, root, dist + 1});
         }
     }
-    // LOG(INFO) << "Fussion function end(vid, dist, ind)" ;
 }
 
-void HybridBLPartitioner::fission(vid_t vid)
+void HybridBLPartitioner::fission(bid_t machine, vid_t vid)
 {
     ++num_visit_vertices;
     V.set(vid, 1);
-    for (int direction = 0; direction < 2; ++direction) {
+    for (int direction = 1; direction < 2; ++direction) {
         adjlist_t &neighbors = direction ? adj_out[vid] : adj_in[vid];
         for (vid_t i = 0; i < neighbors.size(); ++i) {
             eid_t eid = neighbors[i].v;
+            assert(eid < num_edges && eid >= 0);
             if (edgelist2bucket[eid] != kInvalidBid) continue;
             num_visit_edges += 1;
 
             vid_t &uid = direction ? edges[eid].second : edges[eid].first;
-            assign_edge(uid % p, vid, uid, eid);
+            assign_edge(uid % p, direction ? vid : uid, direction ? uid : vid, eid);
+            // if (direction == 0) {
+            //     assign_edge(uid % p, uid, vid, eid);
+            // } else {
+            //     assign_edge(uid % p, vid, uid, eid);
+            // }
             ++fission_occupy[uid % p];
         }
     }
