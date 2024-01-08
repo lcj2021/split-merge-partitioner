@@ -37,10 +37,17 @@ add_executable (
     src/hep_partitioner.cpp
     src/fennel_partitioner.cpp
     src/bpart_partitioner.cpp
+    src/hybrid_partitioner.cpp
     src/hybridbl_partitioner.cpp
     src/vertex2edgepart.cpp
     src/test.cpp
     src/conversions.cpp
+)
+
+
+add_executable (
+    get_stat
+    src/get_stat.cpp
 )
 
 target_link_libraries(
