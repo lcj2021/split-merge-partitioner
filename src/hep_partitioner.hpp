@@ -47,6 +47,9 @@ private:
     dense_bitset is_high_degree;
     dense_bitset has_high_degree_neighbor;
 
+    /// @note For derived classes of a class template, 
+    /// if you want to inherit member variables of the base class, 
+    /// you need to use the using keyword to import member variables of the base class
     using AdjListPartitioner<TAdj>::total_time;
     using PartitionerBase::num_vertices;
     using PartitionerBase::num_edges;

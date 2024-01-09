@@ -6,44 +6,41 @@
 #include "graph.hpp"
 #include "partitioner.hpp"
 
-class EbvPartitioner : public Partitioner
+class EbvPartitioner : public EdgeListPartitioner
 {
   private:
     std::string basefilename;
+    std::random_device rd;
+    std::mt19937 gen;
 
-    // vid_t num_vertices;
-    // size_t num_edges;
     double avg_edge_cnt;
-    int p;
+    bid_t p;
 
-    std::vector<vid_t> degrees;
+    std::vector<vid_t> num_bucket_vertices;
 
-    // std::vector<edge_t> edges;
-    std::vector<size_t> vcount;
-    // std::vector<dense_bitset> is_boundarys;
-    edgepart_writer<vid_t, uint16_t> writer;
-    size_t all_part_vertice_cnt;
+    edgepart_writer<vid_t, bid_t> writer;
+    eid_t num_vertices_all_buckets;
 
-    inline void assign_edge(int bucket, vid_t from, vid_t to, size_t edge_id) noexcept
+    inline void assign_edge(bid_t bucket, vid_t from, vid_t to, eid_t edge_id) noexcept
     {
         writer.save_edge(from, to, bucket);
         edgelist2bucket[edge_id] = bucket;
-        occupied[bucket]++;
+        ++occupied[bucket];
         if (!is_boundarys[bucket].get(from)) {
-            ++ vcount[bucket];
-            ++ all_part_vertice_cnt;
+            ++num_bucket_vertices[bucket];
+            ++num_vertices_all_buckets;
             is_boundarys[bucket].set_bit_unsync(from);
         }
         if (!is_boundarys[bucket].get(to)) {
-            ++ vcount[bucket];
-            ++ all_part_vertice_cnt;
+            ++num_bucket_vertices[bucket];
+            ++num_vertices_all_buckets;
             is_boundarys[bucket].set_bit_unsync(to);
         }
     }
 
     // returns bucket id where score is best for edge (u,v)
-    inline int best_scored_partition(vid_t u, vid_t v, int edge_id) noexcept; 
-    inline double compute_partition_score(vid_t u, vid_t v, int bucket_id, int edge_id) noexcept;
+    inline bid_t best_scored_partition(vid_t u, vid_t v, eid_t edge_id) noexcept; 
+    inline double compute_partition_score(vid_t u, vid_t v, bid_t bucket_id, eid_t edge_id) noexcept;
 
     void calculate_stats();
 

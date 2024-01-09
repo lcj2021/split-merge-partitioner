@@ -32,7 +32,7 @@ add_executable (
     src/fsm_partitioner.cpp
     src/ne_partitioner.cpp
     src/hep_partitioner.cpp
-    # src/ebv_partitioner.cpp
+    src/ebv_partitioner.cpp
     # src/hdrf_partitioner.cpp
     # src/dbh_partitioner.cpp
     # src/fennel_partitioner.cpp

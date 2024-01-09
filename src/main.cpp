@@ -3,7 +3,7 @@
 #include "fsm_partitioner.hpp"
 #include "ne_partitioner.hpp"
 #include "hep_partitioner.hpp"
-// #include "ebv_partitioner.hpp"
+#include "ebv_partitioner.hpp"
 // #include "dbh_partitioner.hpp"
 // #include "hdrf_partitioner.hpp"
 // #include "fennel_partitioner.hpp"
@@ -67,12 +67,12 @@ int main(int argc, char *argv[])
         partitioner = std::make_unique<NePartitioner<adj_t>>(FLAGS_filename, false);
     else if (method == "hep")
         partitioner = std::make_unique<HepPartitioner<adj_t>>(FLAGS_filename, false);
+    else if (method == "ebv")
+        partitioner = std::make_unique<EbvPartitioner>(FLAGS_filename, false);
     // else if (method == "dbh")
     //     partitioner = std::make_unique<DbhPartitioner>(FLAGS_filename, false);
     // else if (method == "hdrf")
     //     partitioner = std::make_unique<HdrfPartitioner>(FLAGS_filename, false);
-    // else if (method == "ebv")
-    //     partitioner = std::make_unique<EbvPartitioner>(FLAGS_filename, false);
     // else if (method == "fennel")
     //     partitioner = std::make_unique<FennelPartitioner>(FLAGS_filename, false);
     // else if (method == "bpart")
