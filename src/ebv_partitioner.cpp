@@ -74,7 +74,7 @@ void EbvPartitioner::split()
 
     total_time.stop();
     LOG(INFO) << "total partition time: " << total_time.get_time();
-    for (bid_t b = 0; b < p; ++ b) {
+    for (bid_t b = 0; b < p; ++b) {
         LOG(INFO) << b << ' ' << is_boundarys[b].popcount() << ' ' << occupied[b];
     }
     calculate_stats();
@@ -103,10 +103,10 @@ double EbvPartitioner::compute_partition_score(vid_t u, vid_t v, bid_t bucket_id
     bool u_is_boundary = is_boundarys[bucket_id].get(u), 
         v_is_boundary = is_boundarys[bucket_id].get(v);
     if (!u_is_boundary) {
-        ++ su ;
+        ++su;
     } 
     if (!v_is_boundary) {
-        ++ sv;
+        ++sv;
     }
 
     double imbalance = (double)occupied[bucket_id] / avg_edge_cnt
