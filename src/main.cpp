@@ -1,18 +1,18 @@
 #include <memory>
 
-#include "ne_partitioner.hpp"
 #include "fsm_partitioner.hpp"
-#include "ebv_partitioner.hpp"
-#include "dbh_partitioner.hpp"
-#include "hdrf_partitioner.hpp"
+#include "ne_partitioner.hpp"
 #include "hep_partitioner.hpp"
-#include "fennel_partitioner.hpp"
-#include "bpart_partitioner.hpp"
-#include "hybridbl_partitioner.hpp"
-#include "hybrid_partitioner.hpp"
-#include "edgelist2adjlist.hpp"
-#include "vertex2edgepart.hpp"
-#include "test.hpp"
+// #include "ebv_partitioner.hpp"
+// #include "dbh_partitioner.hpp"
+// #include "hdrf_partitioner.hpp"
+// #include "fennel_partitioner.hpp"
+// #include "bpart_partitioner.hpp"
+// #include "hybridbl_partitioner.hpp"
+// #include "hybrid_partitioner.hpp"
+// #include "edgelist2adjlist.hpp"
+// #include "vertex2edgepart.hpp"
+// #include "test.hpp"
 
 DECLARE_bool(help);
 DECLARE_bool(helpshort);
@@ -53,34 +53,41 @@ int main(int argc, char *argv[])
     Timer timer;
     timer.start();
 
-    std::unique_ptr<Partitioner> partitioner = nullptr;
-    if (FLAGS_method == "ne")
-        partitioner = std::make_unique<NePartitioner>(FLAGS_filename, false);
-    else if (FLAGS_method == "dbh")
-        partitioner = std::make_unique<DbhPartitioner>(FLAGS_filename, false);
-    else if (FLAGS_method == "hdrf")
-        partitioner = std::make_unique<HdrfPartitioner>(FLAGS_filename, false);
-    else if (FLAGS_method == "ebv")
-        partitioner = std::make_unique<EbvPartitioner>(FLAGS_filename, false);
-    else if (FLAGS_method == "hep")
-        partitioner = std::make_unique<HepPartitioner<vid_eid_t>>(FLAGS_filename, false);
-    else if (FLAGS_method == "fennel")
-        partitioner = std::make_unique<FennelPartitioner>(FLAGS_filename, false);
-    else if (FLAGS_method == "bpart")
-        partitioner = std::make_unique<BPartPartitioner>(FLAGS_filename, false);
-    else if (FLAGS_method == "hybridbl")
-        partitioner = std::make_unique<HybridBLPartitioner>(FLAGS_filename, false);
-    else if (FLAGS_method == "hybrid")
-        partitioner = std::make_unique<HybridPartitioner>(FLAGS_filename, false);
-    else if (FLAGS_method.substr(0, 3) == "fsm")
-        partitioner = std::make_unique<FsmPartitioner>(FLAGS_filename);
-    else if (FLAGS_method == "e2a")
-        partitioner = std::make_unique<Edgelist2Adjlist>(FLAGS_filename);
-    else if (FLAGS_method.substr(0, 3) == "v2e")
-        partitioner = std::make_unique<Vertex2EdgePart>(FLAGS_filename, false);
-    else if (FLAGS_method == "test")
-        partitioner = std::make_unique<Test>(FLAGS_filename);
-    LOG(INFO) << "partition method: " << FLAGS_method;
+    std::unique_ptr<PartitionerBase> partitioner = nullptr;
+    std::string method = FLAGS_method;
+    if (method.substr(0, 3) == "fsm") {
+        if (FLAGS_k > 1) {
+            partitioner = std::make_unique<FsmPartitioner>(FLAGS_filename);
+        } else {
+            method = method.substr(4);
+        }
+    }
+    
+    if (method == "ne")
+        partitioner = std::make_unique<NePartitioner<adj_t>>(FLAGS_filename, false);
+    else if (method == "hep")
+        partitioner = std::make_unique<HepPartitioner<adj_t>>(FLAGS_filename, false);
+    // else if (method == "dbh")
+    //     partitioner = std::make_unique<DbhPartitioner>(FLAGS_filename, false);
+    // else if (method == "hdrf")
+    //     partitioner = std::make_unique<HdrfPartitioner>(FLAGS_filename, false);
+    // else if (method == "ebv")
+    //     partitioner = std::make_unique<EbvPartitioner>(FLAGS_filename, false);
+    // else if (method == "fennel")
+    //     partitioner = std::make_unique<FennelPartitioner>(FLAGS_filename, false);
+    // else if (method == "bpart")
+    //     partitioner = std::make_unique<BPartPartitioner>(FLAGS_filename, false);
+    // else if (method == "hybridbl")
+    //     partitioner = std::make_unique<HybridBLPartitioner>(FLAGS_filename, false);
+    // else if (method == "hybrid")
+    //     partitioner = std::make_unique<HybridPartitioner>(FLAGS_filename, false);
+    // else if (method == "e2a")
+    //     partitioner = std::make_unique<Edgelist2Adjlist>(FLAGS_filename);
+    // else if (method.substr(0, 3) == "v2e")
+    //     partitioner = std::make_unique<Vertex2EdgePart>(FLAGS_filename, false);
+    // else if (method == "test")
+    //     partitioner = std::make_unique<Test>(FLAGS_filename);
+    // LOG(INFO) << "partition method: " << method;
     partitioner->split();
 
     timer.stop();

@@ -11,9 +11,10 @@
 
 /* Hybrid Edge Partitioner (HEP) */
 template <typename TAdj>
-class HepPartitioner : public Partitioner
+class HepPartitioner : public AdjListPartitioner<TAdj>
 {
 private:
+    std::string basefilename;
     std::random_device rd;
     std::mt19937 gen;
     const double BALANCE_RATIO = 1.0;
@@ -22,7 +23,6 @@ private:
 
     bool stream_random; // whether to use random streaming for the second phase of HEP
 
-    std::string basefilename;
 
     // vid_t num_vertices;
     eid_t assigned_edges, num_h2h_edges;
@@ -47,6 +47,16 @@ private:
     dense_bitset is_high_degree;
     dense_bitset has_high_degree_neighbor;
 
+    using AdjListPartitioner<TAdj>::total_time;
+    using PartitionerBase::num_vertices;
+    using PartitionerBase::num_edges;
+    using AdjListPartitioner<TAdj>::occupied;
+    using AdjListPartitioner<TAdj>::is_boundarys;
+    using AdjListPartitioner<TAdj>::edges;
+    using AdjListPartitioner<TAdj>::degrees;
+    using AdjListPartitioner<TAdj>::edgelist2bucket;
+    using AdjListPartitioner<TAdj>::mem_graph;
+
 
     vid_t search_index_free_vertex = 0;
 
@@ -57,27 +67,10 @@ private:
 
     void in_memory_clean_up_neighbors(vid_t vid, dense_bitset & is_core, dense_bitset & is_boundary);
 
-    void assign_edge(bid_t cbucket, vid_t from, TAdj& v_e)
-    {
-        writer.save_edge(from, v_e.vid, cbucket);
-        ++assigned_edges;
-        ++occupied[cbucket];
-        v_e.bid = cbucket;
+    void assign_edge(bid_t cbucket, vid_t from, TAdj& v_e);
+    // void assign_edge(bid_t cbucket, vid_t from, adj_t& v_e);
 
-        is_boundarys[cbucket].set_bit_unsync(from);
-        is_boundarys[cbucket].set_bit_unsync(v_e.vid);
-    }
-
-    void assign_edge(bid_t cbucket, vid_t from, vid_t to, eid_t edge_id)
-    {        
-        writer.save_edge(from, to, cbucket);
-        ++assigned_edges;
-        ++occupied[cbucket];
-        edgelist2bucket[edge_id] = cbucket;
-
-        is_boundarys[cbucket].set_bit_unsync(from);
-        is_boundarys[cbucket].set_bit_unsync(to);
-    }
+    void assign_edge(bid_t cbucket, vid_t from, vid_t to, eid_t edge_id);
 
     void in_memory_add_boundary(vid_t vid)
     {
@@ -290,7 +283,53 @@ public:
     void calculate_stats();
 };
 
-template class HepPartitioner<vid_eid_t>;
-// template class HepPartitioner<vid_t>;
+/// @brief AdjList: each entry maintains target vertex and the bucket of the edge 
+template class HepPartitioner<adj_with_bid_t>;
+/// @brief AdjList: each entry maintains only target vertex of the edge 
+template class HepPartitioner<adj_t>;
+
+template <> 
+void HepPartitioner<adj_t>::assign_edge(bid_t cbucket, vid_t from, adj_t& v_e)
+{
+    writer.save_edge(from, v_e.vid, cbucket);
+    ++assigned_edges;
+    ++occupied[cbucket];
+    is_boundarys[cbucket].set_bit_unsync(from);
+    is_boundarys[cbucket].set_bit_unsync(v_e.vid);
+}
+
+template <> 
+void HepPartitioner<adj_with_bid_t>::assign_edge(bid_t cbucket, vid_t from, adj_with_bid_t& v_e)
+{
+    writer.save_edge(from, v_e.vid, cbucket);
+    ++assigned_edges;
+    ++occupied[cbucket];
+    is_boundarys[cbucket].set_bit_unsync(from);
+    is_boundarys[cbucket].set_bit_unsync(v_e.vid);
+
+    v_e.bid = cbucket;
+}
+
+template <> 
+void HepPartitioner<adj_t>::assign_edge(bid_t cbucket, vid_t from, vid_t to, eid_t edge_id)
+{        
+    writer.save_edge(from, to, cbucket);
+    ++assigned_edges;
+    ++occupied[cbucket];
+    is_boundarys[cbucket].set_bit_unsync(from);
+    is_boundarys[cbucket].set_bit_unsync(to);
+}
+
+template <> 
+void HepPartitioner<adj_with_bid_t>::assign_edge(bid_t cbucket, vid_t from, vid_t to, eid_t edge_id)
+{
+    writer.save_edge(from, to, cbucket);
+    ++assigned_edges;
+    ++occupied[cbucket];
+    is_boundarys[cbucket].set_bit_unsync(from);
+    is_boundarys[cbucket].set_bit_unsync(to);
+    
+    edgelist2bucket[edge_id] = cbucket;
+}
 
 #endif

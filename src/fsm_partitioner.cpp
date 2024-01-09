@@ -2,10 +2,10 @@
 
 #include "fsm_partitioner.hpp"
 #include "ne_partitioner.hpp"
-#include "hdrf_partitioner.hpp"
 #include "hep_partitioner.hpp"
-#include "dbh_partitioner.hpp"
-#include "ebv_partitioner.hpp"
+// #include "hdrf_partitioner.hpp"
+// #include "dbh_partitioner.hpp"
+// #include "ebv_partitioner.hpp"
 #include "conversions.hpp"
 DECLARE_int32(k);
 DECLARE_bool(fastmerge);
@@ -22,18 +22,19 @@ FsmPartitioner::FsmPartitioner(std::string basefilename)
     total_time.start();
     split_method = FLAGS_method == "fsm" ? "ne" : FLAGS_method.substr(4);
     if (split_method == "ne") {
-        split_partitioner = std::make_unique<NePartitioner>(FLAGS_filename, true);
-    } else if (split_method == "dbh") {
-        split_partitioner = std::make_unique<DbhPartitioner>(FLAGS_filename, true);
-    } else if (split_method == "ebv") {
-        split_partitioner = std::make_unique<EbvPartitioner>(FLAGS_filename, true);
-    } else if (split_method == "hdrf") {
-        split_partitioner = std::make_unique<HdrfPartitioner>(FLAGS_filename, true);
+        split_partitioner = std::make_unique<NePartitioner<adj_with_bid_t>>(FLAGS_filename, true);
     } else if (split_method == "hep") {
-        split_partitioner = std::make_unique<HepPartitioner<vid_eid_t>>(FLAGS_filename, true);
-    } else {
-        LOG(ERROR) << "Unknown split method!";
+        split_partitioner = std::make_unique<HepPartitioner<adj_with_bid_t>>(FLAGS_filename, true);
     }
+    // else if (split_method == "dbh") {
+    //     split_partitioner = std::make_unique<DbhPartitioner>(FLAGS_filename, true);
+    // } else if (split_method == "ebv") {
+    //     split_partitioner = std::make_unique<EbvPartitioner>(FLAGS_filename, true);
+    // } else if (split_method == "hdrf") {
+    //     split_partitioner = std::make_unique<HdrfPartitioner>(FLAGS_filename, true);
+    // } else {
+    //     LOG(ERROR) << "Unknown split method!";
+    // }
 
     num_vertices = split_partitioner->num_vertices;
     num_edges = split_partitioner->num_edges;

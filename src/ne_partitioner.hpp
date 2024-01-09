@@ -10,7 +10,8 @@
 #include "graph.hpp"
 
 /* Neighbor Expansion (NE) */
-class NePartitioner : public Partitioner
+template <typename TAdj>
+class NePartitioner: public AdjListPartitioner<TAdj>
 {
 private:
     const double BALANCE_RATIO = 1.00;
@@ -22,13 +23,19 @@ private:
     double average_degree;
     eid_t capacity;
 
-    // std::vector<edge_t> edges;
     graph_t adj_out, adj_in;
     MinHeap<vid_t, vid_t> min_heap;
-    // std::vector<size_t> occupied;
-    std::vector<vid_t> degrees;
     std::vector<dense_bitset> is_cores;
-    // std::vector<dense_bitset> is_boundarys;
+
+    using AdjListPartitioner<TAdj>::total_time;
+    using AdjListPartitioner<TAdj>::num_vertices;
+    using AdjListPartitioner<TAdj>::num_edges;
+    using AdjListPartitioner<TAdj>::occupied;
+    using AdjListPartitioner<TAdj>::is_boundarys;
+    using AdjListPartitioner<TAdj>::edges;
+    using AdjListPartitioner<TAdj>::degrees;
+    using AdjListPartitioner<TAdj>::edgelist2bucket;
+
 
     vid_t rand_vertice_id;
     std::random_device rd;
@@ -68,8 +75,10 @@ private:
     void assign_edge(int bucket, vid_t from, vid_t to, size_t edge_id)
     {
         writer.save_edge(from, to, bucket);
-        CHECK_EQ(edgelist2bucket[edge_id], kInvalidBid);
-        edgelist2bucket[edge_id] = bucket;
+        if (need_k_split) {
+            CHECK_EQ(edgelist2bucket[edge_id], kInvalidBid);
+            edgelist2bucket[edge_id] = bucket;
+        }
         ++assigned_edges;
         ++occupied[bucket];
         --degrees[from];
@@ -178,5 +187,8 @@ public:
     NePartitioner(std::string basefilename, bool need_k_split);
     void split();
 };
+
+template class NePartitioner<adj_with_bid_t>;
+template class NePartitioner<adj_t>;
 
 #endif

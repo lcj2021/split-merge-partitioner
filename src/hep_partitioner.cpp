@@ -2,7 +2,7 @@
 #include "hep_partitioner.hpp"
 
 template <typename TAdj>
-HepPartitioner<TAdj>::HepPartitioner(std::string basefilename, bool need_k_split) // @suppress("Class members should be properly initialized")
+HepPartitioner<TAdj>::HepPartitioner(std::string basefilename, bool need_k_split)
     : basefilename(basefilename), rd(), gen(rd()), writer(basefilename, !need_k_split && FLAGS_write)
 {
 
@@ -36,7 +36,6 @@ HepPartitioner<TAdj>::HepPartitioner(std::string basefilename, bool need_k_split
 
     degrees.resize(num_vertices, 0);
 
-    // p = FLAGS_p; //number of partitions. Value comes from console
     lambda = FLAGS_lambda; //for weighing in balancing score in streaming
     extended_metrics = FLAGS_extended_metrics; // displaying extended metrics
     write_out_partitions = FLAGS_write; // writing out partitions to file
@@ -51,8 +50,6 @@ HepPartitioner<TAdj>::HepPartitioner(std::string basefilename, bool need_k_split
     is_in_a_core = dense_bitset(num_vertices); //Shows if a vertex is in ANY C
     is_high_degree = dense_bitset(num_vertices); // whether a vertex has a high degree and is handled differently
     has_high_degree_neighbor = dense_bitset(num_vertices); // whether the vertex has a high degree neighbor (important in assign_remaining function)
-//    dis.param(std::uniform_int_distribution<vid_t>::param_type(0, num_vertices - 1));
-    // edgelist2bucket.assign(num_edges, -1);
 
     Timer read_timer;
     read_timer.start();
@@ -62,11 +59,14 @@ HepPartitioner<TAdj>::HepPartitioner(std::string basefilename, bool need_k_split
 
     load_in_memory(basefilename, fin);
     capacity_in_memory = ((double)num_edges - num_h2h_edges) * BALANCE_RATIO / p + 1;
-    edgelist2bucket.resize(num_h2h_edges, kInvalidBid);
+
+    if (std::is_same<TAdj, adj_with_bid_t>::value) {
+        edgelist2bucket.resize(num_h2h_edges, kInvalidBid);
+    }
 
     read_timer.stop();
     LOG(INFO) << "time used for graph input and construction: " << read_timer.get_time();
-};
+}
 
 // these are the extended stats, including degree distributions etc.
 template <typename TAdj>
@@ -464,7 +464,6 @@ bid_t HepPartitioner<TAdj>::best_scored_partition(vid_t u, vid_t v)
 template <typename TAdj>
 void HepPartitioner<TAdj>::split()
 {
-    // int abort_counter = 0;
     LOG(INFO) << "partition `" << basefilename << "'";
     LOG(INFO) << "number of partitions: " << p;
 

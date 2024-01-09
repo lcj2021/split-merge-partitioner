@@ -13,11 +13,11 @@
 #include "hep_graph.hpp"
 
 /* Fine-grained SplitMerge Partitioner (FSM) */
-class FsmPartitioner : public Partitioner
+class FsmPartitioner : public AdjListPartitioner<adj_with_bid_t>
 {
   
 private:
-    std::unique_ptr<Partitioner> split_partitioner;
+    std::unique_ptr<AdjListPartitioner> split_partitioner;
     std::string split_method;
 
     std::string basefilename;
@@ -25,7 +25,7 @@ private:
     size_t assigned_edges;
     bid_t p, k;
 
-    // mem_graph_t<vid_eid_t> mem_graph;
+    mem_graph_t<adj_with_bid_t> mem_graph;
 
     std::vector<eid_t> num_bucket_edges;
 

@@ -4,11 +4,16 @@
 #include "common.hpp"
 #include "dense_bitset.hpp"
 
-struct vid_eid_t {
+struct adj_with_bid_t {
     vid_t vid;
     bid_t bid;
-    vid_eid_t(vid_t vid, bid_t bid) : vid(vid), bid(bid) {}
-    vid_eid_t(vid_t vid) : vid(vid), bid(kInvalidBid) {}
+    adj_with_bid_t(vid_t vid, bid_t bid) : vid(vid), bid(bid) {}
+    adj_with_bid_t(vid_t vid) : vid(vid), bid(kInvalidBid) {}
+} __attribute__((packed));
+
+struct adj_t {
+    vid_t vid;
+    adj_t(vid_t vid) : vid(vid) {}
 } __attribute__((packed)) ;
 
 /*
@@ -73,7 +78,7 @@ public:
     void pop_back_in(){len_in--;}
 };
 
-template class mem_adjlist_t<vid_eid_t>;
+template class mem_adjlist_t<adj_with_bid_t>;
 
 /*
  * in-memory graph
@@ -139,8 +144,6 @@ public:
 
     eid_t stream_build(std::ifstream &fin, eid_t num_edges, dense_bitset &is_high_degree, dense_bitset &has_high_degree_neighbor, std::vector<vid_t> &count, bool write_low_degree_edgelist);
 
-    eid_t inmemory_build(std::ifstream &fin, eid_t num_edges, dense_bitset &is_high_degree, dense_bitset &has_high_degree_neighbor, std::vector<vid_t> &count, bool write_low_degree_edgelist, std::vector<edge_t> &edges);
-
     mem_adjlist_t<TAdj> &operator[](eid_t idx) { return vdata[idx]; };
 
     const mem_adjlist_t<TAdj> &operator[](eid_t idx) const 
@@ -151,6 +154,7 @@ public:
 
 };
 
-template class mem_graph_t<vid_eid_t>;
+template class mem_graph_t<adj_with_bid_t>;
+template class mem_graph_t<adj_t>;
 
 #endif

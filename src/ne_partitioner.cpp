@@ -1,7 +1,8 @@
 #include "ne_partitioner.hpp"
 #include "conversions.hpp"
 
-NePartitioner::NePartitioner(std::string basefilename, bool need_k_split)
+template <typename TAdj>
+NePartitioner<TAdj>::NePartitioner(std::string basefilename, bool need_k_split)
     : basefilename(basefilename), rd(), gen(rd())
     , need_k_split(need_k_split), writer(basefilename, !need_k_split && FLAGS_write)
 {
@@ -43,7 +44,9 @@ NePartitioner::NePartitioner(std::string basefilename, bool need_k_split)
     is_cores.assign(p, dense_bitset(num_vertices));
     is_boundarys.assign(p, dense_bitset(num_vertices));
     dis.param(std::uniform_int_distribution<vid_t>::param_type(0, num_vertices - 1));
-    edgelist2bucket.assign(num_edges, kInvalidBid);
+    if (need_k_split) {
+        edgelist2bucket.assign(num_edges, kInvalidBid);
+    }
 
     Timer read_timer;
     read_timer.start();
@@ -72,7 +75,8 @@ NePartitioner::NePartitioner(std::string basefilename, bool need_k_split)
     CHECK_EQ(num_out_edges, num_edges);
 };
 
-void NePartitioner::assign_remaining()
+template <typename TAdj>
+void NePartitioner<TAdj>::assign_remaining()
 {
     auto &is_boundary = is_boundarys[p - 1], &is_core = is_cores[p - 1];
     for (vid_t u = 0; u < num_vertices; ++u) {
@@ -98,7 +102,8 @@ void NePartitioner::assign_remaining()
     }
 }
 
-void NePartitioner::calculate_stats()
+template <typename TAdj>
+void NePartitioner<TAdj>::calculate_stats()
 {
     std::cerr << std::string(25, '#') << " Calculating Statistics " << std::string(25, '#') << '\n';
     std::vector<vid_t> num_bucket_vertices(p, 0);
@@ -153,7 +158,8 @@ void NePartitioner::calculate_stats()
     LOG(INFO) << "replication factor (final): " << (double)all_part_vertice_cnt / num_vertices;
 }
 
-void NePartitioner::split()
+template <typename TAdj>
+void NePartitioner<TAdj>::split()
 {
     LOG(INFO) << "partition `" << basefilename << "'";
     LOG(INFO) << "number of partitions: " << p;

@@ -31,16 +31,16 @@ add_executable (
     src/hep_graph.cpp
     src/fsm_partitioner.cpp
     src/ne_partitioner.cpp
-    src/ebv_partitioner.cpp
-    src/hdrf_partitioner.cpp
-    src/dbh_partitioner.cpp
     src/hep_partitioner.cpp
-    src/fennel_partitioner.cpp
-    src/bpart_partitioner.cpp
-    src/hybrid_partitioner.cpp
-    src/hybridbl_partitioner.cpp
-    src/vertex2edgepart.cpp
-    src/test.cpp
+    # src/ebv_partitioner.cpp
+    # src/hdrf_partitioner.cpp
+    # src/dbh_partitioner.cpp
+    # src/fennel_partitioner.cpp
+    # src/bpart_partitioner.cpp
+    # src/hybrid_partitioner.cpp
+    # src/hybridbl_partitioner.cpp
+    # src/vertex2edgepart.cpp
+    # src/test.cpp
     src/conversions.cpp
 )
 
