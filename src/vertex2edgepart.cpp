@@ -2,7 +2,7 @@
  * vertex2edgePart.cpp
  *
  *  Created on: June 19, 2023
- *      Author: xxx
+ *      Author: lcj2021
  *      Base on: Mayerrn
  *      Description: Use to transform METIS edge cut to vertex cut. 
  *              First get adjacent list by method "e2a". 
@@ -18,9 +18,10 @@
 
 #include "vertex2edgepart.hpp"
 
-Vertex2EdgePart::Vertex2EdgePart(std::string basefilename, bool need_k_split): rd(), gen(rd()), writer(basefilename, !need_k_split && FLAGS_write) {
-	this->basefilename = basefilename;
-    std::cerr << basefilename << '\n';
+Vertex2EdgePart::Vertex2EdgePart(std::string basefilename, bool need_k_split)
+    :basefilename(basefilename), rd(), gen(rd()), writer(basefilename, !need_k_split && FLAGS_write) 
+{
+    LOG(INFO) << "basefilename: " << basefilename;
     CHECK_NE(FLAGS_p, 0); p = FLAGS_p;
     CHECK_NE(FLAGS_k, 0); k = FLAGS_k;
 }
@@ -29,7 +30,8 @@ Vertex2EdgePart::~Vertex2EdgePart() {
 }
 
 void 
-Vertex2EdgePart::read_vertexpart() {
+Vertex2EdgePart::read_vertexpart() 
+{
 	// open the partitioning file
 	// assumption: basefilename + ".part"
     std::string partition_method = FLAGS_method.substr(4);
@@ -39,20 +41,21 @@ Vertex2EdgePart::read_vertexpart() {
 
     std::string line;
     std::ifstream partfile(partfilename);
-    uint32_t current_vertex = 0;
-    int result;
+    vid_t current_vertex = 0;
+    bid_t result;
     while(std::getline(partfile, line)) {
         result = std::stoi(line);
-        current_vertex++; // as in METIS format, first vertex id is 1, not 0!
-        vertex2partition[current_vertex] = result;
-        bucket_info[result].occupied ++;
+        ++current_vertex; // as in METIS format, first vertex id is 1, not 0!
+        vertex2bucket[current_vertex] = result;
+        ++bucket_info[result].occupied;
     }
 }
 
-int 
-Vertex2EdgePart::vertex2edgepartID(vid_t u, vid_t v) {
-	int target_u = vertex2partition[u];
-	int target_v = vertex2partition[v];
+bid_t 
+Vertex2EdgePart::vertex2edgepartID(vid_t u, vid_t v) 
+{
+	bid_t target_u = vertex2bucket[u];
+	bid_t target_v = vertex2bucket[v];
 	if (u == v) {
 		return target_u;
 	} else {
@@ -66,29 +69,31 @@ Vertex2EdgePart::vertex2edgepartID(vid_t u, vid_t v) {
 }
 
 void
-Vertex2EdgePart::merge() {
-
-    size_t max_part_edges_cnt = 0, all_part_edges_cnt = 0; 
-    for (int b = 0; b < p * k; ++ b) {
+Vertex2EdgePart::merge() 
+{
+    eid_t max_part_edges_cnt = 0, all_part_edges_cnt = 0; 
+    for (bid_t b = 0; b < p * k; ++b) {
         bucket_info[b].replicas = bucket_info[b].is_mirror.popcount();
         max_part_edges_cnt = std::max(max_part_edges_cnt, bucket_info[b].replicas);
         all_part_edges_cnt += bucket_info[b].replicas;
     }
 
-    std::sort(bucket_info.begin(), bucket_info.end(), 
+    std::sort(
+        bucket_info.begin(), bucket_info.end(), 
         [&](const BucketInfo &l, const BucketInfo &r) {
-        return l.replicas > r.replicas;
-    });
+            return l.replicas > r.replicas;
+        }
+    );
 
-    for (int b = 0; b < p * k; ++ b) 
+    for (bid_t b = 0; b < p * k; ++b) 
         LOG(INFO)   << "Bucket_info " << bucket_info[b].old_id 
                     << " edges: " << bucket_info[b].replicas 
                     << " vertices: " << bucket_info[b].occupied
-                    << " is_chosen: " << bucket_info[b].is_chosen << std::endl;
+                    << " is_chosen: " << bucket_info[b].is_chosen;
     LOG(INFO) << "Edge cut ratio: " << (double)(all_part_edges_cnt - num_edges) / num_edges;
 
     curr_bucket_id = 0;
-    std::unordered_map<int, int> valid_bucket;  // < old bucket, new bucket >
+    std::unordered_map<bid_t, bid_t> valid_bucket;  // < old bucket, new bucket >
 
     // valid_bucket = fast_merge();
     valid_bucket = precise_merge();
@@ -101,34 +106,38 @@ Vertex2EdgePart::merge() {
         if (is_chosen) {
             old_id = get_final_bucket(old_id);
             std::cerr << "Is chosen, new old_id: " << old_id << ", replicas: " << replicas << '\n';
-            ++ b;
+            ++b;
         } else {
             std::swap(bucket_info[b], bucket_info.back());
             bucket_info.pop_back();
         }
     }
     bucket_info.shrink_to_fit();
-    for (size_t b = 0; b < bucket_info.size(); ++ b) 
+    for (size_t b = 0; b < bucket_info.size(); ++b) 
         LOG(INFO) << "Bucket_info " << bucket_info[b].old_id 
                     << ", edges: " << bucket_info[b].replicas 
                     << ", vertices: " << bucket_info[b].occupied
                     << ", rank: " << b;
 
-    size_t curr_assigned_vertices = rearrange_vertice(edges, valid_bucket);
+    eid_t curr_assigned_vertices = rearrange_vertice(edges, valid_bucket);
     assigned_vertices += curr_assigned_vertices;
 }
 
-std::unordered_map<int, int> 
+std::unordered_map<bid_t, bid_t> 
 Vertex2EdgePart::fast_merge()
 {
-    std::unordered_map<int, int> valid_bucket;  // < old bucket, new bucket >
+    std::unordered_map<bid_t, bid_t> valid_bucket;  // < old bucket, new bucket >
     
     // < mirror_cnt, partitions_inside, index_in_bucket_info, old_id >
-    std::priority_queue<std::tuple<int, int, int, int>, std::vector<std::tuple<int, int, int, int>>, std::greater<std::tuple<int, int, int, int>>> pq;  
-    for (int b = 0; b < p; ++ b) {
+    std::priority_queue<
+        std::tuple<int, int, bid_t, bid_t>, 
+        std::vector<std::tuple<int, int, bid_t, bid_t>>, 
+        std::greater<std::tuple<int, int, bid_t, bid_t>>
+    > pq;  
+    for (bid_t b = 0; b < p; ++b) {
         pq.emplace(0, 0, b, b);
     }
-    for (int b = 0; b < p * k; ++ b) {
+    for (bid_t b = 0; b < p * k; ++b) {
         auto &[is_mirror, occupied, old_id, replicas, is_chosen] = bucket_info[b];
         auto [mirror_cnt, partitions_inside, parent_bucket, parent_old_id] = pq.top();
         pq.pop();
@@ -152,29 +161,29 @@ Vertex2EdgePart::fast_merge()
     return valid_bucket;
 }
 
-std::unordered_map<int, int> 
+std::unordered_map<bid_t, bid_t> 
 Vertex2EdgePart::precise_merge()
 {
-    std::unordered_map<int, int> valid_bucket;  // < old bucket, new bucket >
+    std::unordered_map<bid_t, bid_t> valid_bucket;  // < old bucket, new bucket >
 
     // < mirror_cnt, partitions_inside, index_in_bucket_info, old_id >
-    std::vector<std::tuple<int, int, int, int>> final_bucket;
-    for (int b = 0; b < p; ++ b) {
+    std::vector<std::tuple<int, int, bid_t, bid_t>> final_bucket;
+    for (bid_t b = 0; b < p; ++b) {
         final_bucket.emplace_back(0, 0, b, b);
     }
-    auto compute_new_bucket_size = [&](int bid_a, int bid_b) -> size_t {
+    auto compute_new_bucket_size = [&](bid_t bid_a, bid_t bid_b) -> size_t {
         const auto &is_mirror_a = bucket_info[bid_a].is_mirror, &is_mirror_b = bucket_info[bid_b].is_mirror;
         dense_bitset new_bucket = is_mirror_a | is_mirror_b;
         return new_bucket.popcount();
     };
 
-    for (int b = 0; b < p * k; ++ b) {
+    for (bid_t b = 0; b < p * k; ++b) {
         auto &[is_mirror, occupied, old_id, replicas, is_chosen] = bucket_info[b];
 
-        int best_final_bucket = -1;
+        bid_t best_final_bucket = kInvalidBid;
         size_t min_size_after_merge = std::numeric_limits<size_t>::max();
 
-        for (size_t fb = 0; fb < final_bucket.size(); ++ fb) {
+        for (size_t fb = 0; fb < final_bucket.size(); ++fb) {
             auto [mirror_cnt, partitions_inside, parent_bucket, parent_old_id] = final_bucket[fb];
             if (partitions_inside == k) continue;
             if (partitions_inside == 0) {
@@ -187,7 +196,7 @@ Vertex2EdgePart::precise_merge()
                 best_final_bucket = fb;
             }
         }
-        CHECK_NE(best_final_bucket, -1);
+        CHECK_NE(best_final_bucket, kInvalidBid);
 
         auto [mirror_cnt, partitions_inside, parent_bucket, parent_old_id] = final_bucket[best_final_bucket];
         if (partitions_inside == 0) {
@@ -209,15 +218,15 @@ Vertex2EdgePart::precise_merge()
     return valid_bucket;
 }
 
-int 
-Vertex2EdgePart::merge_bucket(int dst, int src, bool &has_intersection)   // dst, src
+vid_t 
+Vertex2EdgePart::merge_bucket(vid_t dst, vid_t src, bool &has_intersection)   // dst, src
 {
     auto &is_mirror_a = bucket_info[dst].is_mirror, &is_mirror_b = bucket_info[src].is_mirror;
     size_t mirror_cnt = 0;
-    for (size_t i = 0; i < is_mirror_a.size(); ++ i) {
+    for (size_t i = 0; i < is_mirror_a.size(); ++i) {
         if (is_mirror_a.get(i) == 1 || is_mirror_b.get(i) == 1) {
             is_mirror_a.set_bit_unsync(i);
-            ++ mirror_cnt;
+            ++mirror_cnt;
         }
         if (!has_intersection && is_mirror_a.get(i) == 1 && is_mirror_b.get(i) == 1) {
             has_intersection = true;
@@ -229,7 +238,8 @@ Vertex2EdgePart::merge_bucket(int dst, int src, bool &has_intersection)   // dst
 }
 
 void 
-Vertex2EdgePart::split() {
+Vertex2EdgePart::split() 
+{
     if (!split_in_edgelist() && !split_in_adjlist()) {
         LOG(FATAL) << "Read graph failed!";
     }
@@ -241,8 +251,8 @@ Vertex2EdgePart::split() {
         LOG(INFO) << "Writing result...";
     for (const auto &edge : edges) {
         vid_t from = edge.first, to = edge.second;
-        int target_p = vertex2edgepartID(from, to);
-        occupied[target_p]++;
+        bid_t target_p = vertex2edgepartID(from, to);
+        ++occupied[target_p];
         is_boundarys[target_p].set_bit_unsync(from);
         is_boundarys[target_p].set_bit_unsync(to);
         // from --, to --;
@@ -256,36 +266,37 @@ void
 Vertex2EdgePart::calculate_stats()
 {
     std::cerr << std::string(25, '#') << " Calculating Statistics " << std::string(25, '#') << '\n';
-    std::vector<size_t> bucket2vcnt(p, 0);
-    rep (i, p) {
-        bucket2vcnt[i] = is_boundarys[i].popcount();
+    std::vector<vid_t> num_bucket_vertices(p, 0);
+    for (bid_t b = 0; b < p; ++b) {
+        num_bucket_vertices[b] = is_boundarys[b].popcount();
     }
+    vid_t max_part_vertice_cnt = *std::max_element(num_bucket_vertices.begin(), num_bucket_vertices.end());
+    vid_t all_part_vertice_cnt = accumulate(num_bucket_vertices.begin(), num_bucket_vertices.end(), (vid_t)0);
+    eid_t max_part_edge_cnt = *std::max_element(occupied.begin(), occupied.end());
+    eid_t all_part_edge_cnt = accumulate(occupied.begin(), occupied.end(), (eid_t)0);
 
-    size_t max_part_vertice_cnt = *std::max_element(bucket2vcnt.begin(), bucket2vcnt.end());
-    size_t all_part_vertice_cnt = accumulate(bucket2vcnt.begin(), bucket2vcnt.end(), (size_t)0);
-    size_t max_part_edge_cnt = *std::max_element(occupied.begin(), occupied.end());
-    size_t all_part_edge_cnt = accumulate(occupied.begin(), occupied.end(), (size_t)0);
-
-    rep(i, p)
-        LOG(INFO) << "Partition id: " << i
-                    << ", vertice: " << bucket2vcnt[i]
-                    << ", edges: " << occupied[i] << std::endl;
+    for (bid_t b = 0; b < p; ++b) {
+        LOG(INFO) << "Bucket_info: " << b
+                << ", vertices: " << num_bucket_vertices[b]
+                << ", edges: " << occupied[b];
+    }
     
-    double avg_vertice_cnt = (double)all_part_vertice_cnt / (p);
-    double avg_edge_cnt = (double)all_part_edge_cnt / (p);
+    double avg_vertice_cnt = static_cast<double>(all_part_vertice_cnt) / p;
+    double avg_edge_cnt = static_cast<double>(all_part_edge_cnt) / p;
 
     double std_vertice_deviation = 0.0;
     double std_edge_deviation = 0.0;
-    for (int b = 0; b < p; ++ b) {
-        std_vertice_deviation += pow(bucket2vcnt[b] - avg_vertice_cnt, 2);
+    for (bid_t b = 0; b < p; ++b) {
+        std_vertice_deviation += pow(num_bucket_vertices[b] - avg_vertice_cnt, 2);
         std_edge_deviation += pow(occupied[b] - avg_edge_cnt, 2);
     }
-    std_vertice_deviation = sqrt((double)std_vertice_deviation / p);
-    std_edge_deviation = sqrt((double)std_edge_deviation / p);
+    std_vertice_deviation = sqrt(static_cast<double>(std_vertice_deviation) / p);
+    std_edge_deviation = sqrt(static_cast<double>(std_edge_deviation) / p);
+
     
     LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
     LOG(INFO) << "Max vertice count / avg vertice count: "
-              << (double)max_part_vertice_cnt / ((double)num_vertices / (p));
+              << static_cast<double>(max_part_vertice_cnt) / (num_vertices / p);
     LOG(INFO) << "Max Vertice count: "
               << max_part_vertice_cnt;
     LOG(INFO) << "Avg Vertice count(No replicate): "
@@ -295,7 +306,7 @@ Vertex2EdgePart::calculate_stats()
 
     LOG(INFO) << std::string(20, '#') << "\tEdge       balance\t" << std::string(20, '#');
     LOG(INFO) << "Max edge count / avg edge count: "
-              << (double)max_part_edge_cnt / avg_edge_cnt;
+              << static_cast<double>(max_part_edge_cnt) / avg_edge_cnt;
     LOG(INFO) << "Max Edge count: "
               << max_part_edge_cnt;
     LOG(INFO) << "Avg Edge count: "
@@ -305,5 +316,5 @@ Vertex2EdgePart::calculate_stats()
 
     CHECK_EQ(all_part_edge_cnt, num_edges);
     LOG(INFO) << std::string(20, '#') << "\tReplicate    factor\t" << std::string(20, '#');
-    LOG(INFO) << "replication factor (final): " << (double)all_part_vertice_cnt / num_vertices;
+    LOG(INFO) << "replication factor (final): " << static_cast<double>(all_part_vertice_cnt) / num_vertices;
 }

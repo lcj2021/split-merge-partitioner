@@ -39,7 +39,7 @@ add_executable (
     src/bpart_partitioner.cpp
     # src/hybrid_partitioner.cpp
     # src/hybridbl_partitioner.cpp
-    # src/vertex2edgepart.cpp
+    src/vertex2edgepart.cpp
     # src/test.cpp
     src/conversions.cpp
 )
