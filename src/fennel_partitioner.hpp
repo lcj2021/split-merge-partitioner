@@ -8,31 +8,36 @@
 #include "graph.hpp"
 #include "partitioner.hpp"
 
-class FennelPartitioner : public Partitioner
+template <typename TAdj>
+class FennelPartitioner : public AdjListPartitioner<TAdj>
 {
   private:
     std::string basefilename;
     std::random_device rd;
     std::mt19937 gen;
-    // vid_t num_vertices;
-    // size_t num_edges;
+
     bid_t p;
+
+    using AdjListPartitioner<TAdj>::total_time;
+    using AdjListPartitioner<TAdj>::num_vertices;
+    using AdjListPartitioner<TAdj>::num_edges;
+    using AdjListPartitioner<TAdj>::occupied;
+    using AdjListPartitioner<TAdj>::is_boundarys;
+    using AdjListPartitioner<TAdj>::edges;
+    using AdjListPartitioner<TAdj>::degrees;
+    using AdjListPartitioner<TAdj>::edgelist2bucket;
 
     // // use mmap for file input
     // int fin;
     // off_t filesize;
     // char *fin_map, *fin_ptr, *fin_end;
 
-    std::vector<vid_t> degrees;
-
-    // std::vector<edge_t> edges;
     graph_t adj_out, adj_in;
-    std::vector<size_t> vcount;
-    // std::vector<dense_bitset> is_boundarys;
+    std::vector<eid_t> w_;
     vertexpart_writer<vid_t, bid_t> writer;
-    std::vector<uint16_t> vertex2bucket;
-    int max_degree;
-    size_t capacity;
+    
+    std::vector<bid_t> vertex2bucket;
+    eid_t capacity;
     // Parameters
     double gamma = 1.5;
     double alpha;
@@ -41,20 +46,21 @@ class FennelPartitioner : public Partitioner
         return alpha * gamma * pow(sz, gamma - 1.0);
     }
 
-    std::tuple<size_t, size_t> overlap_partition_vertex(vid_t vid, int bucket_id);
+    std::tuple<vid_t, vid_t> overlap_partition_vertex(vid_t vid, bid_t bucket_id);
 
-    void assign_vertex(int bucket, vid_t vid, size_t additional_edges)
+    void assign_vertex(bid_t bucket, vid_t vid, eid_t additional_edges)
     {
         writer.save_vertex(vid, bucket);
         is_boundarys[bucket].set_bit_unsync(vid);
         vertex2bucket[vid] = bucket;
-        // vcount[bucket] += degrees[vid];
-        vcount[bucket] += 1;
+        // w_[bucket] += degrees[vid];
+        w_[bucket] += 1;
         occupied[bucket] += additional_edges;
     }
 
-    std::tuple<bid_t, size_t> best_scored_partition(vid_t v); // returns <final bucket, additional edges> whose score is best for vertex v
-    std::tuple<double, size_t> compute_partition_score(vid_t vid, int bucket_id);
+    /// @return <final bucket, additional edges> whose score is best for vertex v
+    std::tuple<bid_t, eid_t> best_scored_partition(vid_t v); 
+    std::tuple<double, eid_t> compute_partition_score(vid_t vid, bid_t bucket_id);
 
     void calculate_stats();
 
@@ -62,5 +68,7 @@ class FennelPartitioner : public Partitioner
     FennelPartitioner(std::string basefilename, bool need_k_split);
     void split();
 };
+
+template class FennelPartitioner<adj_t>;
 
 #endif

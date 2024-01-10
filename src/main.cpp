@@ -6,8 +6,8 @@
 #include "ebv_partitioner.hpp"
 #include "dbh_partitioner.hpp"
 #include "hdrf_partitioner.hpp"
-// #include "fennel_partitioner.hpp"
-// #include "bpart_partitioner.hpp"
+#include "fennel_partitioner.hpp"
+#include "bpart_partitioner.hpp"
 // #include "hybridbl_partitioner.hpp"
 // #include "hybrid_partitioner.hpp"
 // #include "edgelist2adjlist.hpp"
@@ -73,10 +73,10 @@ int main(int argc, char *argv[])
         partitioner = std::make_unique<DbhPartitioner>(FLAGS_filename, false);
     else if (method == "hdrf")
         partitioner = std::make_unique<HdrfPartitioner>(FLAGS_filename, false);
-    // else if (method == "fennel")
-    //     partitioner = std::make_unique<FennelPartitioner>(FLAGS_filename, false);
-    // else if (method == "bpart")
-    //     partitioner = std::make_unique<BPartPartitioner>(FLAGS_filename, false);
+    else if (method == "fennel")
+        partitioner = std::make_unique<FennelPartitioner<adj_t>>(FLAGS_filename, false);
+    else if (method == "bpart")
+        partitioner = std::make_unique<BPartPartitioner<adj_t>>(FLAGS_filename, false);
     // else if (method == "hybridbl")
     //     partitioner = std::make_unique<HybridBLPartitioner>(FLAGS_filename, false);
     // else if (method == "hybrid")

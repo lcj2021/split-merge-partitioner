@@ -92,7 +92,7 @@ void DbhPartitioner::split()
 
 void DbhPartitioner::calculate_stats()
 {
-std::cerr << std::string(25, '#') << " Calculating Statistics " << std::string(25, '#') << '\n';
+    std::cerr << std::string(25, '#') << " Calculating Statistics " << std::string(25, '#') << '\n';
     std::vector<vid_t> num_bucket_vertices(p, 0);
     for (bid_t b = 0; b < p; ++b) {
         num_bucket_vertices[b] = is_boundarys[b].popcount();
