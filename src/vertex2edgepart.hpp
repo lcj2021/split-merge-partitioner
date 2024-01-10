@@ -8,37 +8,33 @@
 #include "part_writer.hpp"
 #include "partitioner.hpp"
 
-class Vertex2EdgePart : public Partitioner {
+class Vertex2EdgePart : public EdgeListPartitioner
+{
 private:
 	std::string basefilename;
-
-    // vid_t num_vertices;
-    // size_t num_edges;
-    int k, p;
     std::random_device rd;
     std::mt19937 gen;
+
+    bid_t k, p;
 
     int fin;
     off_t filesize;
 
-    std::vector<int16_t> vertex2partition; // maps vertex id to partition id
+    std::vector<bid_t> vertex2bucket; // maps vertex id to partition id
     vid_t assigned_vertices;
-    // std::vector<size_t> occupied;
-	// std::vector<dense_bitset> is_boundarys;
 
-    boost::unordered_map<std::tuple<vid_t, vid_t>, size_t> uv2edgeid;
-    size_t curr_edge_cnt;
+    boost::unordered_map<std::tuple<vid_t, vid_t>, eid_t> uv2edgeid;
+    eid_t curr_edge_cnt;
 
-    edgepart_writer<vid_t, uint16_t> writer;
+    edgepart_writer<vid_t, bid_t> writer;
 
     struct BucketInfo {
         dense_bitset is_mirror;
         size_t occupied, old_id, replicas;
-        bool is_chosen;
-        BucketInfo(vid_t num_edges) {
+        bool is_chosen{false};
+        BucketInfo(eid_t num_edges) {
             is_mirror = dense_bitset(num_edges);
             old_id = occupied = replicas = 0;
-            is_chosen = false;
         }
         bool operator < (const BucketInfo& rhs) const {
             if (is_chosen != rhs.is_chosen) return is_chosen > rhs.is_chosen;
@@ -57,62 +53,62 @@ private:
 
     void init_datastructures()
     {
-    	vertex2partition.resize(num_vertices + 1, -1);
+    	vertex2bucket.resize(num_vertices + 1, kInvalidBid);
     	is_boundarys.resize(p * k, dense_bitset(num_vertices + 1));
         occupied.assign(p * k, 0);
 
         bucket_info.assign(p * k, BucketInfo(num_edges));
-        for (int i = 0; i < p * k; ++ i) bucket_info[i].old_id = i;
+        for (bid_t b = 0; b < p * k; ++b) bucket_info[b].old_id = b;
     }
 
-    size_t rearrange_vertice(std::vector<edge_t> &e, const std::unordered_map<int, int> &valid_bucket)
+    eid_t rearrange_vertice(std::vector<edge_t> &e, const std::unordered_map<bid_t, bid_t> &valid_bucket)
     {
-        size_t curr_assigned_vertices = 0;
-        for (vid_t v_id = 1; v_id <= num_vertices; ++ v_id) {
-            int16_t &v_bucket = vertex2partition[v_id];
+        eid_t curr_assigned_vertices = 0;
+        for (vid_t vid = 1; vid <= num_vertices; ++vid) {
+            bid_t &v_bucket = vertex2bucket[vid];
             if (valid_bucket.count(v_bucket)) {
                 v_bucket = valid_bucket.at(v_bucket);
-                ++ curr_assigned_vertices;
+                ++curr_assigned_vertices;
             } else {        // [[unlikely]] No edge should be left
-                LOG(ERROR) << "Vertice(id): " << v_id << ", bucket: " << v_bucket << ", should not be left in the final round\n";
+                LOG(ERROR) << "Vertice(id): " << vid << ", bucket: " << v_bucket << ", should not be left in the final round\n";
             }
         }
         return curr_assigned_vertices;
     }
 
-    std::unordered_map<int, int> mp;
-    int curr_bucket_id;
-    int get_final_bucket(int bucket_id)
+    std::unordered_map<bid_t, bid_t> mp;
+    bid_t curr_bucket_id;
+    bid_t get_final_bucket(bid_t bucket_id)
     {
         if (mp.count(bucket_id)) {
             return mp[bucket_id];
         } else {
-            return mp[bucket_id] = curr_bucket_id ++;
+            return mp[bucket_id] = curr_bucket_id++;
         }
     }
 
     void merge();
     void calculate_stats();
 
-    int merge_bucket(int dst, int src, bool &has_intersection);
-    std::unordered_map<int, int> fast_merge();
-    std::unordered_map<int, int> precise_merge();
+    vid_t merge_bucket(vid_t dst, vid_t src, bool &has_intersection);
+    std::unordered_map<bid_t, bid_t> fast_merge();
+    std::unordered_map<bid_t, bid_t> precise_merge();
 
 	void read_vertexpart();
 
-	int vertex2edgepartID(vid_t u, vid_t v);
+	bid_t vertex2edgepartID(vid_t u, vid_t v);
 
     bool split_in_adjlist()
     {
         // read the metis adjacency list
         curr_edge_cnt = 0;
-        FILE *fin = fopen((basefilename + ".adjlist").c_str(), "r");
+        FILE *fin = fopen((basefilename + ".adjlist").data(), "r");
         if (fin == NULL) {
             LOG(INFO) << "Could not load:" << basefilename
-                        << " error: " << strerror(errno) << std::endl;
+                        << " error: " << strerror(errno);
             return false;
         }
-        LOG(INFO) << "Reading in adjacency list format!" << std::endl;
+        LOG(INFO) << "Reading in adjacency list format!";
         LOG(INFO) << basefilename;
 
         int maxlen = 1000000000;
@@ -121,10 +117,10 @@ private:
         size_t bytesread = 0;
 
         char delims[] = " \t";
-        size_t linenum = 0;
+        eid_t linenum = 0;
 
         while (fgets(s, maxlen, fin) != NULL) {
-            linenum++;
+            ++linenum;
 
             FIXLINE(s);
             bytesread += strlen(s);
@@ -135,7 +131,7 @@ private:
             if (linenum == 1) {
                 char *t = strtok(s, delims);
                 if (t == NULL) {
-                    LOG(INFO) << "First line must contain num verts and num edges" << std::endl; // empty line
+                    LOG(INFO) << "First line must contain num verts and num edges";
                     return false;
                 }
 
@@ -144,17 +140,16 @@ private:
                 if (t != NULL){
                     num_edges = atol(t);
                 } else {
-                    LOG(INFO) << "First line must contain num verts and num edges" << std::endl;
+                    LOG(INFO) << "First line must contain num verts and num edges";
                     return false;
                 }
-                LOG(INFO) << "Vertices: " << num_vertices << ", Edges: " << num_edges << std::endl;
+                LOG(INFO) << "Vertices: " << num_vertices << ", Edges: " << num_edges;
 
                 init_datastructures();
                 read_vertexpart();
                 continue; 
             }
 
-            // LOG(INFO) << "***********";
             vid_t from = linenum - 1; // because first line contained the num of verts and edges
             char *t = strtok(s, delims);
             if (t == NULL)              continue;
@@ -163,13 +158,13 @@ private:
                 vid_t to = atoi(t);
                 if (from < to) { //ignore one direction, because METIS format contains both directions of an undirected edge
                     edges.emplace_back(edge_t(from, to));
-                    int part_u = vertex2partition[from];
-                    int part_v = vertex2partition[to];
+                    bid_t part_u = vertex2bucket[from];
+                    bid_t part_v = vertex2bucket[to];
 
                     bucket_info[part_u].is_mirror.set_bit_unsync(curr_edge_cnt);
                     bucket_info[part_v].is_mirror.set_bit_unsync(curr_edge_cnt);
 
-                    curr_edge_cnt ++;
+                    ++curr_edge_cnt;
                 }
             } while((t = strtok(NULL, delims)) != NULL);
         }
@@ -192,8 +187,8 @@ private:
 
         LOG(INFO) << "num_vertices: " << num_vertices
                 << ", num_edges: " << num_edges;
-        if (sizeof(vid_t) + sizeof(size_t) + num_edges * sizeof(edge_t) != (size_t)filesize) {
-            LOG(INFO) << "sizeof(vid_t) + sizeof(size_t) + num_edges * sizeof(edge_t) != filesize";
+        if (sizeof(vid_t) + sizeof(eid_t) + num_edges * sizeof(edge_t) != (size_t)filesize) {
+            LOG(INFO) << "sizeof(vid_t) + sizeof(eid_t) + num_edges * sizeof(edge_t) != filesize";
             return false;
         }
 
@@ -205,14 +200,15 @@ private:
         std::shuffle(edges.begin(), edges.end(), rd);
         for (auto &edge : edges) {
             vid_t &from = edge.first, &to = edge.second;
-            from ++, to ++;
-            int part_u = vertex2partition[from];
-            int part_v = vertex2partition[to];
+            ++from;
+            ++to;
+            bid_t part_u = vertex2bucket[from];
+            bid_t part_v = vertex2bucket[to];
 
             bucket_info[part_u].is_mirror.set_bit_unsync(curr_edge_cnt);
             bucket_info[part_v].is_mirror.set_bit_unsync(curr_edge_cnt);
 
-            curr_edge_cnt ++;
+            ++curr_edge_cnt;
         }
         fin.close();
         return true;

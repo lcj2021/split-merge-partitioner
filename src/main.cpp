@@ -11,7 +11,7 @@
 // #include "hybridbl_partitioner.hpp"
 // #include "hybrid_partitioner.hpp"
 // #include "edgelist2adjlist.hpp"
-// #include "vertex2edgepart.hpp"
+#include "vertex2edgepart.hpp"
 // #include "test.hpp"
 
 DECLARE_bool(help);
@@ -83,8 +83,8 @@ int main(int argc, char *argv[])
     //     partitioner = std::make_unique<HybridPartitioner>(FLAGS_filename, false);
     // else if (method == "e2a")
     //     partitioner = std::make_unique<Edgelist2Adjlist>(FLAGS_filename);
-    // else if (method.substr(0, 3) == "v2e")
-    //     partitioner = std::make_unique<Vertex2EdgePart>(FLAGS_filename, false);
+    else if (method.substr(0, 3) == "v2e")
+        partitioner = std::make_unique<Vertex2EdgePart>(FLAGS_filename, false);
     // else if (method == "test")
     //     partitioner = std::make_unique<Test>(FLAGS_filename);
     // LOG(INFO) << "partition method: " << method;
