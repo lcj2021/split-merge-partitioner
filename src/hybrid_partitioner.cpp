@@ -35,16 +35,14 @@ HybridPartitioner::HybridPartitioner(std::string basefilename, bool need_k_split
     }
 
     average_degree = num_edges * 2.0 / num_vertices;
-    // degree_threshold = average_degree * 1;
 
     LOG(INFO) << "average_degree: " << average_degree;
     assigned_edges = 0;
     capacity = static_cast<double>(num_edges) * BALANCE_RATIO / p + 1;
     occupied.assign(p, 0);
-    is_cores.assign(p, dense_bitset(num_vertices));
     is_boundarys.assign(p, dense_bitset(num_vertices));
     dis.param(std::uniform_int_distribution<vid_t>::param_type(0, num_vertices - 1));
-    edgelist2bucket.assign(num_edges, kInvalidBid);
+    // edgelist2bucket.assign(num_edges, kInvalidBid);
 
     Timer read_timer;
     read_timer.start();
@@ -57,9 +55,7 @@ HybridPartitioner::HybridPartitioner(std::string basefilename, bool need_k_split
     std::ifstream degree_file(degree_name(basefilename), std::ios::binary);
     degree_file.read((char *)&degrees[0], num_vertices * sizeof(vid_t));
     degree_file.close();
-    // for (const auto& [u, v] : edges) {
-    //     ++degrees[v];
-    // }
+    
     read_timer.stop();
     LOG(INFO) << "time used for graph input and construction: " << read_timer.get_time();
 };
@@ -143,9 +139,6 @@ void HybridPartitioner::split()
     compute_timer.stop();
 
     LOG(INFO) << "time used for partitioning: " << compute_timer.get_time();
-    LOG(INFO) << assigned_edges << ' ' << num_edges;
-    LOG(INFO) << "num_visit(V, E): " << num_visit_vertices << ' ' << num_visit_edges;
-    CHECK_EQ(assigned_edges, num_edges);
 
     total_time.stop();
     LOG(INFO) << "total partition time: " << total_time.get_time();

@@ -37,8 +37,8 @@ add_executable (
     src/hdrf_partitioner.cpp
     src/fennel_partitioner.cpp
     src/bpart_partitioner.cpp
-    # src/hybrid_partitioner.cpp
-    # src/hybridbl_partitioner.cpp
+    src/hybridbl_partitioner.cpp
+    src/hybrid_partitioner.cpp
     src/vertex2edgepart.cpp
     # src/test.cpp
     src/conversions.cpp

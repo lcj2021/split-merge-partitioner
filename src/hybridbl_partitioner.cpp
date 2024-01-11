@@ -1,7 +1,8 @@
 #include "hybridbl_partitioner.hpp"
 #include "conversions.hpp"
 
-HybridBLPartitioner::HybridBLPartitioner(std::string basefilename, bool need_k_split)
+template <typename TAdj>
+HybridBLPartitioner<TAdj>::HybridBLPartitioner(std::string basefilename, bool need_k_split)
     : basefilename(basefilename), rd(), gen(rd())
     , need_k_split(need_k_split), writer(basefilename, !need_k_split && FLAGS_write)
 {
@@ -47,7 +48,6 @@ HybridBLPartitioner::HybridBLPartitioner(std::string basefilename, bool need_k_s
     occupied.assign(p, 0);
     adj_out.resize(num_vertices);
     adj_in.resize(num_vertices);
-    is_cores.assign(p, dense_bitset(num_vertices));
     is_boundarys.assign(p, dense_bitset(num_vertices));
     dis.param(std::uniform_int_distribution<vid_t>::param_type(0, num_vertices - 1));
     edgelist2bucket.assign(num_edges, kInvalidBid);
@@ -78,7 +78,8 @@ HybridBLPartitioner::HybridBLPartitioner(std::string basefilename, bool need_k_s
     LOG(INFO) << "time used for graph input and construction: " << read_timer.get_time();
 };
 
-void HybridBLPartitioner::calculate_stats()
+template <typename TAdj>
+void HybridBLPartitioner<TAdj>::calculate_stats()
 {
     std::cerr << std::string(25, '#') << " Calculating Statistics " << std::string(25, '#') << '\n';
     std::vector<vid_t> num_bucket_vertices(p, 0);
@@ -133,7 +134,8 @@ void HybridBLPartitioner::calculate_stats()
     LOG(INFO) << "replication factor (final): " << (double)all_part_vertice_cnt / num_vertices;
 }
 
-void HybridBLPartitioner::split()
+template <typename TAdj>
+void HybridBLPartitioner<TAdj>::split()
 {
     LOG(INFO) << "partition `" << basefilename << "'";
     LOG(INFO) << "number of partitions: " << p;
@@ -186,8 +188,6 @@ void HybridBLPartitioner::split()
 
     compute_timer.stop();
 
-    LOG(INFO) << "time used for partitioning: " << compute_timer.get_time();
-    LOG(INFO) << "num_visit(V, E): " << num_visit_vertices << ' ' << num_visit_edges;
     CHECK_EQ(assigned_edges, num_edges);
 
     total_time.stop();
@@ -207,7 +207,8 @@ void HybridBLPartitioner::split()
     LOG(INFO) << "max_assigned: " << max_assigned;
 }
 
-void HybridBLPartitioner::init_fusion(bid_t machine, vid_t vid, vid_t dist)
+template <typename TAdj>
+void HybridBLPartitioner<TAdj>::init_fusion(bid_t machine, vid_t vid, vid_t dist)
 {
     super[vid] = vid;
     bid_t candidate = kInvalidBid;
@@ -222,12 +223,12 @@ void HybridBLPartitioner::init_fusion(bid_t machine, vid_t vid, vid_t dist)
     fusion(machine, vid, vid, dist);
 }
 
-void HybridBLPartitioner::fusion(bid_t machine, vid_t vid, vid_t root, vid_t dist)
+template <typename TAdj>
+void HybridBLPartitioner<TAdj>::fusion(bid_t machine, vid_t vid, vid_t root, vid_t dist)
 {
     // LOG(INFO) << "Fussion function begin(vid, dist, ind): " 
     //     << vid << ' ' << dist << ' ' 
     //     << adj_in[vid].size() << ' ' << adj_out[vid].size();
-    ++num_visit_vertices;
     V.set(vid, 1);
     vid_t current_super = super[root];
     assert(super[root] == root);
@@ -239,7 +240,6 @@ void HybridBLPartitioner::fusion(bid_t machine, vid_t vid, vid_t root, vid_t dis
             eid_t eid = neighbors[i].v;
             assert(eid < num_edges && eid >= 0);
             if (edgelist2bucket[eid] != kInvalidBid) continue;
-            num_visit_edges += 1;
 
             vid_t &uid = direction ? edges[eid].second : edges[eid].first;
 
@@ -257,9 +257,9 @@ void HybridBLPartitioner::fusion(bid_t machine, vid_t vid, vid_t root, vid_t dis
     }
 }
 
-void HybridBLPartitioner::fission(bid_t machine, vid_t vid)
+template <typename TAdj>
+void HybridBLPartitioner<TAdj>::fission(bid_t machine, vid_t vid)
 {
-    ++num_visit_vertices;
     V.set(vid, 1);
     for (int direction = 1; direction < 2; ++direction) {
         adjlist_t &neighbors = direction ? adj_out[vid] : adj_in[vid];
@@ -267,7 +267,6 @@ void HybridBLPartitioner::fission(bid_t machine, vid_t vid)
             eid_t eid = neighbors[i].v;
             assert(eid < num_edges && eid >= 0);
             if (edgelist2bucket[eid] != kInvalidBid) continue;
-            num_visit_edges += 1;
 
             vid_t &uid = direction ? edges[eid].second : edges[eid].first;
             assign_edge(uid % p, direction ? vid : uid, direction ? uid : vid, eid);

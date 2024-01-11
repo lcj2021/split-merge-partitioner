@@ -90,7 +90,7 @@ private:
     void merge();
     void calculate_stats();
 
-    vid_t merge_bucket(vid_t dst, vid_t src, bool &has_intersection);
+    size_t merge_bucket(vid_t dst, vid_t src, bool &has_intersection);
     std::unordered_map<bid_t, bid_t> fast_merge();
     std::unordered_map<bid_t, bid_t> precise_merge();
 

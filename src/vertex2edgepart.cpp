@@ -218,7 +218,7 @@ Vertex2EdgePart::precise_merge()
     return valid_bucket;
 }
 
-vid_t 
+size_t 
 Vertex2EdgePart::merge_bucket(vid_t dst, vid_t src, bool &has_intersection)   // dst, src
 {
     auto &is_mirror_a = bucket_info[dst].is_mirror, &is_mirror_b = bucket_info[src].is_mirror;

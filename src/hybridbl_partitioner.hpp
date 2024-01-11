@@ -12,12 +12,16 @@
 #include "graph.hpp"
 
 /* Hybrid-BL (Topology refactorization) */
-class HybridBLPartitioner : public Partitioner
+template <typename TAdj>
+class HybridBLPartitioner : public AdjListPartitioner<TAdj>
 {
 private:
     const double BALANCE_RATIO = 1.00;
 
     std::string basefilename;
+    std::random_device rd;
+    std::mt19937 gen;
+    std::uniform_int_distribution<vid_t> dis;
 
     eid_t assigned_edges;
     bid_t p, bucket;
@@ -27,10 +31,6 @@ private:
     // std::vector<edge_t> edges;
     graph_t adj_out, adj_in;
     MinHeap<vid_t, vid_t> min_heap;
-    // std::vector<size_t> occupied;
-    std::vector<vid_t> degrees;
-    std::vector<dense_bitset> is_cores;
-    // std::vector<dense_bitset> is_boundarys;
 
     std::vector<eid_t> fission_occupy;
     std::vector<eid_t> fusion_occupy;
@@ -43,8 +43,6 @@ private:
     vid_t gamma = 3;
     eid_t fusion_threshold = 1'000'000;
     std::vector<vid_t> super;
-    vid_t num_visit_vertices;
-    eid_t num_visit_edges;
 
     // V[vid] = 1, if vid is handled
     dense_bitset V;
@@ -52,15 +50,19 @@ private:
     // vertex id, dist from super
     std::vector<std::queue<std::tuple<vid_t, vid_t, vid_t>>> Q;
 
-    vid_t rand_vertice_id;
-    std::random_device rd;
-    std::mt19937 gen;
-    std::uniform_int_distribution<vid_t> dis;
+    using AdjListPartitioner<TAdj>::total_time;
+    using AdjListPartitioner<TAdj>::num_vertices;
+    using AdjListPartitioner<TAdj>::num_edges;
+    using AdjListPartitioner<TAdj>::occupied;
+    using AdjListPartitioner<TAdj>::is_boundarys;
+    using AdjListPartitioner<TAdj>::edges;
+    using AdjListPartitioner<TAdj>::degrees;
+    using AdjListPartitioner<TAdj>::edgelist2bucket;
 
     bool need_k_split;
     edgepart_writer<vid_t, bid_t> writer;
 
-    void assign_edge(int bucket, vid_t from, vid_t to, size_t edge_id)
+    void assign_edge(bid_t bucket, vid_t from, vid_t to, size_t edge_id)
     {
         writer.save_edge(from, to, bucket);
         CHECK_EQ(edgelist2bucket[edge_id], kInvalidBid);
@@ -104,5 +106,7 @@ public:
     HybridBLPartitioner(std::string basefilename, bool need_k_split);
     void split();
 };
+
+template class HybridBLPartitioner<adj_t>;
 
 #endif
