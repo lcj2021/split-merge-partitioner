@@ -24,7 +24,6 @@ DECLARE_double(hdf);
 DECLARE_double(lambda);
 DECLARE_bool(write_low_degree_edgelist);
 DECLARE_bool(extended_metrics);
-DECLARE_bool(random_streaming);
 DECLARE_bool(hybrid_NE);
 
 using vid_t = uint32_t;

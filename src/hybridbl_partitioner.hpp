@@ -5,7 +5,6 @@
 #include <random>
 #include <unordered_map>
 
-#include "min_heap.hpp"
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
 #include "partitioner.hpp"
@@ -13,7 +12,7 @@
 
 /* Hybrid-BL (Topology refactorization) */
 template <typename TAdj>
-class HybridBLPartitioner : public AdjListPartitioner<TAdj>
+class HybridBLPartitioner : public AdjListEPartitioner<TAdj>
 {
 private:
     const double BALANCE_RATIO = 1.00;
@@ -24,13 +23,11 @@ private:
     std::uniform_int_distribution<vid_t> dis;
 
     eid_t assigned_edges;
-    bid_t p, bucket;
     double average_degree;
     eid_t capacity;
 
     // std::vector<edge_t> edges;
     graph_t adj_out, adj_in;
-    MinHeap<vid_t, vid_t> min_heap;
 
     std::vector<eid_t> fission_occupy;
     std::vector<eid_t> fusion_occupy;
@@ -50,19 +47,22 @@ private:
     // vertex id, dist from super
     std::vector<std::queue<std::tuple<vid_t, vid_t, vid_t>>> Q;
 
-    using AdjListPartitioner<TAdj>::total_time;
-    using AdjListPartitioner<TAdj>::num_vertices;
-    using AdjListPartitioner<TAdj>::num_edges;
-    using AdjListPartitioner<TAdj>::occupied;
-    using AdjListPartitioner<TAdj>::is_boundarys;
-    using AdjListPartitioner<TAdj>::edges;
-    using AdjListPartitioner<TAdj>::degrees;
-    using AdjListPartitioner<TAdj>::edgelist2bucket;
+    using AdjListEPartitioner<TAdj>::total_time;
+    using AdjListEPartitioner<TAdj>::num_vertices;
+    using AdjListEPartitioner<TAdj>::num_edges;
+    using AdjListEPartitioner<TAdj>::num_partitions;
+    
+    using AdjListEPartitioner<TAdj>::occupied;
+    using AdjListEPartitioner<TAdj>::is_boundarys;
+    using AdjListEPartitioner<TAdj>::edges;
+    using AdjListEPartitioner<TAdj>::degrees;
+    using AdjListEPartitioner<TAdj>::edgelist2bucket;
+    using EdgePartitioner::calculate_stats;
 
     bool need_k_split;
     edgepart_writer<vid_t, bid_t> writer;
 
-    void assign_edge(bid_t bucket, vid_t from, vid_t to, size_t edge_id)
+    void assign_edge(bid_t bucket, vid_t from, vid_t to, eid_t edge_id)
     {
         writer.save_edge(from, to, bucket);
         CHECK_EQ(edgelist2bucket[edge_id], kInvalidBid);
@@ -90,14 +90,13 @@ private:
     {
         while (free_vertex[machine] < num_vertices
             && V.get(free_vertex[machine]) == 1) {
-            free_vertex[machine] += p;
+            free_vertex[machine] += num_partitions;
         }
         if (free_vertex[machine] >= num_vertices)
             return false;
         return true;
     }
 
-    void calculate_stats();
     void init_fusion(bid_t machine, vid_t vid, vid_t dist);
     void fusion(bid_t machine, vid_t vid, vid_t root, vid_t dist);
     void fission(bid_t machine, vid_t vid);

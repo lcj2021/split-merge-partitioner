@@ -14,7 +14,7 @@ struct adj_with_bid_t {
 struct adj_t {
     vid_t vid;
     adj_t(vid_t vid) : vid(vid) {}
-} __attribute__((packed)) ;
+};
 
 /*
  * Entry in the index array. Contains a reference to the column array and the lengths (in and out) of the entry.

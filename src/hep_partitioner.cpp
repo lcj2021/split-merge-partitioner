@@ -29,9 +29,9 @@ HepPartitioner<TAdj>::HepPartitioner(std::string basefilename, bool need_k_split
               << ", num_edges: " << num_edges;
     CHECK_EQ(sizeof(vid_t) + sizeof(eid_t) + num_edges * sizeof(edge_t), filesize);
 
-    p = FLAGS_p;
+    num_partitions = FLAGS_p;
     if (need_k_split) {
-        p *= FLAGS_k;
+        num_partitions *= FLAGS_k;
     }
 
     degrees.resize(num_vertices, 0);
@@ -40,13 +40,12 @@ HepPartitioner<TAdj>::HepPartitioner(std::string basefilename, bool need_k_split
     extended_metrics = FLAGS_extended_metrics; // displaying extended metrics
     write_out_partitions = FLAGS_write; // writing out partitions to file
     write_low_degree_edgelist = FLAGS_write_low_degree_edgelist; // writing low degree edgelist to file
-    stream_random = FLAGS_random_streaming; // random streaming
     average_degree = (double)num_edges * 2 / num_vertices;
     assigned_edges = 0; //will take track of how many edges are assigned to a bucket so far
-    capacity = (double)num_edges * BALANCE_RATIO / p + 1; //will be used to as stopping criterion later
-    occupied.assign(p, 0);  //Will count how many edges are in one partition
+    capacity = (double)num_edges * BALANCE_RATIO / num_partitions + 1; //will be used to as stopping criterion later
+    occupied.assign(num_partitions, 0);  //Will count how many edges are in one partition
 
-    is_boundarys.assign(p, dense_bitset(num_vertices)); //shows if a vertex is in S of a bucket
+    is_boundarys.assign(num_partitions, dense_bitset(num_vertices)); //shows if a vertex is in S of a bucket
     is_in_a_core = dense_bitset(num_vertices); //Shows if a vertex is in ANY C
     is_high_degree = dense_bitset(num_vertices); // whether a vertex has a high degree and is handled differently
     has_high_degree_neighbor = dense_bitset(num_vertices); // whether the vertex has a high degree neighbor (important in assign_remaining function)
@@ -58,7 +57,7 @@ HepPartitioner<TAdj>::HepPartitioner(std::string basefilename, bool need_k_split
     high_degree_factor = FLAGS_hdf;
 
     load_in_memory(basefilename, fin);
-    capacity_in_memory = ((double)num_edges - num_h2h_edges) * BALANCE_RATIO / p + 1;
+    capacity_in_memory = ((double)num_edges - num_h2h_edges) * BALANCE_RATIO / num_partitions + 1;
 
     if (std::is_same<TAdj, adj_with_bid_t>::value) {
         edgelist2bucket.resize(num_h2h_edges, kInvalidBid);
@@ -85,7 +84,7 @@ void HepPartitioner<TAdj>::compute_stats()
 			++vertex_count_C;
 		} else { 
             // for those not in core, check whether they are in the boundary of any of the first k-1 partitions (the last partition is not built based on expansion)
-			for (bid_t j = 0; j < p - 1; ++j) {
+			for (bid_t j = 0; j < num_partitions - 1; ++j) {
 				if (is_boundarys[j].get(i)) {
 					total_degree_S += degrees[i];
 					++vertex_count_S;
@@ -191,59 +190,8 @@ void HepPartitioner<TAdj>::in_memory_assign_remaining()
 	LOG(INFO) << "Assigned edges before streaming: " << assigned_edges << std::endl;
 	LOG(INFO) << "Assigning edges between high-degree vertices" << std::endl;
 
-	if (stream_random) {
-		// random_streaming();
-	}
-	else {
-		hdrf_streaming();
-	}
-
+    hdrf_streaming();
 }
-
-
-
-// void HepPartitioner::random_streaming() {
-
-// 	LOG(INFO) << "Streaming randomly." << std::endl;
-// 	// assign the edges between two high degree vertices
-
-// 	mem_graph.h2h_file.open(h2hedgelist_name(basefilename), std::ios_base::binary | std::ios_base::in );
-// 	mem_graph.h2h_file.seekg(0, std::ios::beg);
-
-// 	std::vector<edge_t> stream_edges; // temporary buffer to read edges from file
-// 	size_t chunk_size;
-// 	size_t left_h2h_edges = mem_graph.num_h2h_edges;
-
-// 	if (left_h2h_edges >= 100000) {
-// 		chunk_size = 100000; // batch read of so many edges
-// 	}
-// 	else {
-// 		chunk_size = left_h2h_edges;
-// 	}
-// 	stream_edges.resize(chunk_size);
-
-// 	//	LOG(INFO) << "Chunk size is " << chunk_size << endl;
-
-
-// 	while (left_h2h_edges > 0) { // edges to be read
-// 		mem_graph.h2h_file.read((char *)&stream_edges[0], sizeof(edge_t) * chunk_size);
-// 		for (size_t i = 0; i < chunk_size; ++i) {
-
-// 			bucket = std::rand() % p; // random bucket
-
-// 			assign_edge(bucket, stream_edges[i].first, stream_edges[i].second);
-// 			is_boundarys[bucket].set_bit_unsync(stream_edges[i].first);
-// 			is_boundarys[bucket].set_bit_unsync(stream_edges[i].second);
-
-// 		}
-
-// 		left_h2h_edges -= chunk_size;
-// 		if (left_h2h_edges < chunk_size) { // adapt chunk size for last batch read
-// 		 chunk_size = left_h2h_edges;
-// 		}
-// 	}
-// }
-
 
 template <typename TAdj>
 void HepPartitioner<TAdj>::hdrf_streaming()
@@ -283,7 +231,7 @@ void HepPartitioner<TAdj>::hdrf_streaming()
 			}
 			if (occupied[bucket] == min_size) {
 				bid_t min_sized_bucket_count = 0;
-				for (bid_t b = 0; b < p; ++b) {
+				for (bid_t b = 0; b < num_partitions; ++b) {
 					if (occupied[b] == min_size) {
 						++min_sized_bucket_count;
 					}
@@ -352,7 +300,7 @@ void HepPartitioner<TAdj>::partition_in_memory()
 {
 	bool expansion_finished = false;
 
-    for (bucket = 0; bucket < p - 1; ++bucket) {
+    for (bucket = 0; bucket < num_partitions - 1; ++bucket) {
         LOG(INFO) << bucket << ", ";
 
         //DLOG(INFO) << "sample size: " << adj_out.num_edges();
@@ -448,7 +396,7 @@ bid_t HepPartitioner<TAdj>::best_scored_partition(vid_t u, vid_t v)
 {
 	double best_score = -1.0;
 	bid_t best_partition = kInvalidBid;
-	for (bid_t i = 0; i < p; ++i) {
+	for (bid_t i = 0; i < num_partitions; ++i) {
 		double score = compute_partition_score(u, v, i);
 		if (score > best_score) {
 			best_score = score;
@@ -456,7 +404,7 @@ bid_t HepPartitioner<TAdj>::best_scored_partition(vid_t u, vid_t v)
 		}
 	}
     if (best_partition == kInvalidBid) {
-        best_partition = gen() % p;
+        best_partition = gen() % num_partitions;
     }
 	return best_partition;
 }
@@ -465,19 +413,17 @@ template <typename TAdj>
 void HepPartitioner<TAdj>::split()
 {
     LOG(INFO) << "partition `" << basefilename << "'";
-    LOG(INFO) << "number of partitions: " << p;
+    LOG(INFO) << "number of partitions: " << num_partitions;
 
-    Timer compute_timer;
+    // Timer compute_timer;
 
     min_heap.reserve(num_vertices);
 
     LOG(INFO) << "partitioning...";
-    compute_timer.start();
-
-
+    
+    partition_time.start();
     partition_in_memory();
-
-    compute_timer.stop();
+    partition_time.stop();
 
     calculate_stats();
 
@@ -485,7 +431,7 @@ void HepPartitioner<TAdj>::split()
     CHECK_EQ(check_edge_hybrid(), 1);
 
     total_time.stop();
-    LOG(INFO) << "total partition time: " << total_time.get_time();
+    LOG(INFO) << "partitioning time: " << partition_time.get_time();
 
     /*
      * compute some stats about the partitioned graph (for further analysis)
@@ -496,59 +442,59 @@ void HepPartitioner<TAdj>::split()
     }
 }
 
-template <typename TAdj>
-void HepPartitioner<TAdj>::calculate_stats()
-{
-    std::cerr << std::string(25, '#') << " Calculating Statistics " << std::string(25, '#') << '\n';
-    std::vector<vid_t> num_bucket_vertices(p, 0);
-    for (bid_t b = 0; b < p; ++b) {
-        num_bucket_vertices[b] = is_boundarys[b].popcount();
-    }
-    vid_t max_part_vertice_cnt = *std::max_element(num_bucket_vertices.begin(), num_bucket_vertices.end());
-    vid_t all_part_vertice_cnt = accumulate(num_bucket_vertices.begin(), num_bucket_vertices.end(), (vid_t)0);
-    eid_t max_part_edge_cnt = *std::max_element(occupied.begin(), occupied.end());
-    eid_t all_part_edge_cnt = accumulate(occupied.begin(), occupied.end(), (eid_t)0);
+// template <typename TAdj>
+// void HepPartitioner<TAdj>::calculate_stats()
+// {
+//     std::cerr << std::string(25, '#') << " Calculating Statistics " << std::string(25, '#') << '\n';
+//     std::vector<vid_t> num_bucket_vertices(num_partitions, 0);
+//     for (bid_t b = 0; b < num_partitions; ++b) {
+//         num_bucket_vertices[b] = is_boundarys[b].popcount();
+//     }
+//     vid_t max_part_vertice_cnt = *std::max_element(num_bucket_vertices.begin(), num_bucket_vertices.end());
+//     vid_t all_part_vertice_cnt = accumulate(num_bucket_vertices.begin(), num_bucket_vertices.end(), (vid_t)0);
+//     eid_t max_part_edge_cnt = *std::max_element(occupied.begin(), occupied.end());
+//     eid_t all_part_edge_cnt = accumulate(occupied.begin(), occupied.end(), (eid_t)0);
 
-    for (bid_t b = 0; b < p; ++b) {
-        LOG(INFO) << "Bucket_info: " << b
-                << ", vertices: " << num_bucket_vertices[b]
-                << ", edges: " << occupied[b];
-    }
+//     for (bid_t b = 0; b < num_partitions; ++b) {
+//         LOG(INFO) << "Bucket_info: " << b
+//                 << ", vertices: " << num_bucket_vertices[b]
+//                 << ", edges: " << occupied[b];
+//     }
     
-    double avg_vertice_cnt = static_cast<double>(all_part_vertice_cnt) / p;
-    double avg_edge_cnt = static_cast<double>(all_part_edge_cnt) / p;
+//     double avg_vertice_cnt = static_cast<double>(all_part_vertice_cnt) / num_partitions;
+//     double avg_edge_cnt = static_cast<double>(all_part_edge_cnt) / num_partitions;
 
-    double std_vertice_deviation = 0.0;
-    double std_edge_deviation = 0.0;
-    for (bid_t b = 0; b < p; ++b) {
-        std_vertice_deviation += pow(num_bucket_vertices[b] - avg_vertice_cnt, 2);
-        std_edge_deviation += pow(occupied[b] - avg_edge_cnt, 2);
-    }
-    std_vertice_deviation = sqrt(static_cast<double>(std_vertice_deviation) / p);
-    std_edge_deviation = sqrt(static_cast<double>(std_edge_deviation) / p);
+//     double std_vertice_deviation = 0.0;
+//     double std_edge_deviation = 0.0;
+//     for (bid_t b = 0; b < num_partitions; ++b) {
+//         std_vertice_deviation += pow(num_bucket_vertices[b] - avg_vertice_cnt, 2);
+//         std_edge_deviation += pow(occupied[b] - avg_edge_cnt, 2);
+//     }
+//     std_vertice_deviation = sqrt(static_cast<double>(std_vertice_deviation) / num_partitions);
+//     std_edge_deviation = sqrt(static_cast<double>(std_edge_deviation) / num_partitions);
 
     
-    LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
-    LOG(INFO) << "Max vertice count / avg vertice count: "
-              << static_cast<double>(max_part_vertice_cnt) / (num_vertices / p);
-    LOG(INFO) << "Max Vertice count: "
-              << max_part_vertice_cnt;
-    LOG(INFO) << "Avg Vertice count(No replicate): "
-              << num_vertices / p;
-    LOG(INFO) << "Vertice std_vertice_deviation / avg: "
-              << std_vertice_deviation / avg_vertice_cnt;
+//     LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
+//     LOG(INFO) << "Max vertice count / avg vertice count: "
+//               << static_cast<double>(max_part_vertice_cnt) / (num_vertices / num_partitions);
+//     LOG(INFO) << "Max Vertice count: "
+//               << max_part_vertice_cnt;
+//     LOG(INFO) << "Avg Vertice count(No replicate): "
+//               << num_vertices / num_partitions;
+//     LOG(INFO) << "Vertice std_vertice_deviation / avg: "
+//               << std_vertice_deviation / avg_vertice_cnt;
 
-    LOG(INFO) << std::string(20, '#') << "\tEdge       balance\t" << std::string(20, '#');
-    LOG(INFO) << "Max edge count / avg edge count: "
-              << static_cast<double>(max_part_edge_cnt) / avg_edge_cnt;
-    LOG(INFO) << "Max Edge count: "
-              << max_part_edge_cnt;
-    LOG(INFO) << "Avg Edge count: "
-              << num_edges / p;
-    LOG(INFO) << "Edge std_edge_deviation / avg: "
-              << std_edge_deviation / avg_edge_cnt;
+//     LOG(INFO) << std::string(20, '#') << "\tEdge       balance\t" << std::string(20, '#');
+//     LOG(INFO) << "Max edge count / avg edge count: "
+//               << static_cast<double>(max_part_edge_cnt) / avg_edge_cnt;
+//     LOG(INFO) << "Max Edge count: "
+//               << max_part_edge_cnt;
+//     LOG(INFO) << "Avg Edge count: "
+//               << num_edges / num_partitions;
+//     LOG(INFO) << "Edge std_edge_deviation / avg: "
+//               << std_edge_deviation / avg_edge_cnt;
 
-    CHECK_EQ(all_part_edge_cnt, num_edges);
-    LOG(INFO) << std::string(20, '#') << "\tReplicate    factor\t" << std::string(20, '#');
-    LOG(INFO) << "replication factor (final): " << static_cast<double>(all_part_vertice_cnt) / num_vertices;
-}
+//     CHECK_EQ(all_part_edge_cnt, num_edges);
+//     LOG(INFO) << std::string(20, '#') << "\tReplicate    factor\t" << std::string(20, '#');
+//     LOG(INFO) << "replication factor (final): " << static_cast<double>(all_part_vertice_cnt) / num_vertices;
+// }

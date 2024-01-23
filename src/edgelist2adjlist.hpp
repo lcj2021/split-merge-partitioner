@@ -6,20 +6,12 @@
 #include "partitioner.hpp"
 #include "conversions.hpp"
 
-class Edgelist2Adjlist : public Partitioner
+class Edgelist2Adjlist : public EdgePartitioner
 {
   private:
     std::string basefilename;
 
-    vid_t num_vertices;
-    size_t num_edges;
-    int p;
-
-    std::vector<vid_t> degrees;
-
-    std::vector<edge_t> edges;
     graph_t adj_out, adj_in;
-    std::vector<dense_bitset> is_boundarys;
     std::ofstream fout;
 
   public:
@@ -50,12 +42,12 @@ class Edgelist2Adjlist : public Partitioner
 
         LOG(INFO) << "num_vertices: " << num_vertices
                 << ", num_edges: " << num_edges;
-        CHECK_EQ(sizeof(vid_t) + sizeof(size_t) + num_edges * sizeof(edge_t), filesize);
+        CHECK_EQ(sizeof(vid_t) + sizeof(eid_t) + num_edges * sizeof(edge_t), filesize);
 
-        p = FLAGS_p;
+        num_partitions = FLAGS_p;
         adj_out.resize(num_vertices);
         adj_in.resize(num_vertices);
-        is_boundarys.assign(p, dense_bitset(num_vertices));
+        is_boundarys.assign(num_partitions, dense_bitset(num_vertices));
 
         Timer read_timer;
         read_timer.start();
@@ -72,7 +64,8 @@ class Edgelist2Adjlist : public Partitioner
         degree_file.read((char *)&degrees[0], num_vertices * sizeof(vid_t));
         degree_file.close();
         read_timer.stop();
-        LOG(INFO) << "time used for graph input and construction: " << read_timer.get_time();
+        LOG(INFO) << "time used for graph input and construction: " 
+                << read_timer.get_time();
     }
 
     void split();
@@ -82,11 +75,11 @@ void
 Edgelist2Adjlist::split()
 {
     fout << num_vertices << ' ' << num_edges << " 010 " << 1 << std::endl;
-    for (vid_t vid = 0; vid < num_vertices; ++ vid) {
+    for (vid_t vid = 0; vid < num_vertices; ++vid) {
         fout << degrees[vid] << ' ';
-        rep (direction, 2) {
+        for (int direction = 0; direction < 2; ++direction) {
             adjlist_t &neighbors = direction ? adj_out[vid] : adj_in[vid];
-            for (size_t i = 0; i < neighbors.size(); ++ i) {
+            for (size_t i = 0; i < neighbors.size(); ++i) {
                 vid_t &uid = direction ? edges[neighbors[i].v].second : edges[neighbors[i].v].first;
                 fout << uid + 1 << ' ';
             }

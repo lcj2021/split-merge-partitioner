@@ -8,19 +8,15 @@
 #include "graph.hpp"
 #include "partitioner.hpp"
 
-class HdrfPartitioner : public EdgeListPartitioner
+class HdrfPartitioner : public EdgeListEPartitioner
 {
   private:
     std::string basefilename;
-
-    bid_t p;
 
     // use mmap for file input
     int fin;
     off_t filesize;
     char *fin_map, *fin_ptr, *fin_end;
-
-    std::vector<vid_t> degrees;
 
     edgepart_writer<vid_t, bid_t> writer;
     vid_t max_degree;
@@ -41,8 +37,6 @@ class HdrfPartitioner : public EdgeListPartitioner
 
     bid_t best_scored_partition(vid_t u, vid_t v); // returns bucket id where score is best for edge (u,v)
     double compute_partition_score(vid_t u, vid_t v, bid_t bucket_id);
-
-    void calculate_stats();
 
   public:
     HdrfPartitioner(std::string basefilename, bool need_k_split);

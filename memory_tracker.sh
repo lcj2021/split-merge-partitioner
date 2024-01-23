@@ -34,8 +34,11 @@ max_memory=$(awk 'NR>1{print $3}' "$log_file" | sort -nr | head -n1)
 max_memory=$(awk 'NR>1{print $3}' "$log_file" | sort -nr | head -n1)
 max_memory_gb=$(awk "BEGIN { printf \"%.2f\", $max_memory / 1024 / 1024 }")
 
-echo "Max Memory: $max_memory_gb GB" >> "$output_file"
+echo "Peak Memory: $max_memory_gb GB" >> "$output_file"
 
 cat "$temp_file" >> "$output_file"
 
 rm "$temp_file" "$log_file"
+
+# Usage:
+# ./memory_tracker.sh "/dk/lcj_graph_partition/split-merge-partitioner/build/main -p 32 -method ne -k 2 -hdf 10 -filename ../dataset/uu" "/dk/lcj_graph_partition/partition_res/p32/uu/ne"

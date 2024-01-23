@@ -13,21 +13,29 @@
 #include "hep_graph.hpp"
 
 /* Fine-grained SplitMerge Partitioner (FSM) */
-class FsmPartitioner : public AdjListPartitioner<adj_with_bid_t>
+class FsmPartitioner : public AdjListEPartitioner<adj_with_bid_t>
 {
   
 private:
-    std::unique_ptr<AdjListPartitioner> split_partitioner;
+    std::unique_ptr<AdjListEPartitioner> split_partitioner;
     std::string split_method;
 
     std::string basefilename;
 
-    size_t assigned_edges;
-    bid_t p, k;
+    eid_t assigned_edges;
+    bid_t k;
 
-    mem_graph_t<adj_with_bid_t> mem_graph;
-
-    std::vector<eid_t> num_bucket_edges;
+    using AdjListEPartitioner<adj_with_bid_t>::total_time;
+    using AdjListEPartitioner<adj_with_bid_t>::partition_time;
+    using PartitionerBase::num_vertices;
+    using PartitionerBase::num_edges;
+    using PartitionerBase::num_partitions;
+    using AdjListEPartitioner<adj_with_bid_t>::occupied;
+    using AdjListEPartitioner<adj_with_bid_t>::is_boundarys;
+    using AdjListEPartitioner<adj_with_bid_t>::edges;
+    using AdjListEPartitioner<adj_with_bid_t>::degrees;
+    using AdjListEPartitioner<adj_with_bid_t>::edgelist2bucket;
+    using AdjListEPartitioner<adj_with_bid_t>::mem_graph;
 
     struct BucketInfo {
         dense_bitset is_mirror;
@@ -112,7 +120,6 @@ private:
             e[edge_id].recover();
             if (valid_bucket.count(edge_bucket)) {
                 edge_bucket = valid_bucket.at(edge_bucket);
-                ++num_bucket_edges[edge_bucket] ;
                 // e[edge_id].remove();
                 ++curr_assigned_edges;
             } else {        // [[unlikely]]  No edge should be left
@@ -122,14 +129,13 @@ private:
         return curr_assigned_edges;
     }
 
-    size_t rearrange_edge_hybrid(const std::unordered_map<bid_t, bid_t> &valid_bucket)
+    eid_t rearrange_edge_hybrid(const std::unordered_map<bid_t, bid_t> &valid_bucket)
     {
         return iterate_edges( 
             [this, &valid_bucket](bid_t& edge_bucket, 
                 const vid_t& u, const vid_t& v) {
                 if (valid_bucket.count(edge_bucket)) {
                     edge_bucket = valid_bucket.at(edge_bucket);
-                    ++num_bucket_edges[edge_bucket];
                 } else {
                     LOG(FATAL) << "bucket: " << edge_bucket 
                             << ", should not be left in the final round\n";
@@ -140,10 +146,10 @@ private:
 
     bool check_edge_hybrid()
     {
-        std::vector<dense_bitset> dbitsets(p, dense_bitset(num_vertices));
+        std::vector<dense_bitset> dbitsets(num_partitions, dense_bitset(num_vertices));
         for (vid_t vid = 0; vid < num_vertices; ++vid) {
             bool assigned_to_a_part = false;
-            for (bid_t b = 0; b < p; ++b) {
+            for (bid_t b = 0; b < num_partitions; ++b) {
                 if (bucket_info[b].is_mirror.get(vid)) {
                     assigned_to_a_part = true;
                     break;
@@ -161,7 +167,7 @@ private:
         );
         // for (size_t edge_id = 0; edge_id < num_edges; ++edge_id) {
         //     // edges[edge_id].recover();
-        //     int16_t edge_bucket = edgelist2bucket[edge_id];
+        //     bid_t edge_bucket = edgelist2bucket[edge_id];
         //     vid_t u = edges[edge_id].first, v = edges[edge_id].second;
         //     dbitsets[edge_bucket].set_bit_unsync(u);
         //     dbitsets[edge_bucket].set_bit_unsync(v);
@@ -173,7 +179,7 @@ private:
             }   
             return true;
         };
-        for (bid_t b = 0; b < p; ++b) {
+        for (bid_t b = 0; b < num_partitions; ++b) {
             if (!equal_dbitset(dbitsets[b], bucket_info[b].is_mirror)) { return false; }
         }
         return true;
@@ -188,10 +194,10 @@ private:
 
     bool check_edge()
     {
-        std::vector<dense_bitset> dbitsets(p, dense_bitset(num_vertices));
+        std::vector<dense_bitset> dbitsets(num_partitions, dense_bitset(num_vertices));
         for (vid_t vid = 0; vid < num_vertices; ++vid) {
             bool assigned_to_a_part = false;
-            for (bid_t b = 0; b < p; ++b) {
+            for (bid_t b = 0; b < num_partitions; ++b) {
                 if (bucket_info[b].is_mirror.get(vid)) {
                     assigned_to_a_part = true;
                     break;
@@ -201,9 +207,9 @@ private:
                 return false;
             }
         }
-        for (size_t edge_id = 0; edge_id < num_edges; ++edge_id) {
+        for (eid_t edge_id = 0; edge_id < num_edges; ++edge_id) {
             // edges[edge_id].recover();
-            int16_t edge_bucket = edgelist2bucket[edge_id];
+            bid_t edge_bucket = edgelist2bucket[edge_id];
             vid_t u = edges[edge_id].first, v = edges[edge_id].second;
             dbitsets[edge_bucket].set_bit_unsync(u);
             dbitsets[edge_bucket].set_bit_unsync(v);
@@ -215,7 +221,7 @@ private:
             }   
             return true;
         };
-        for (bid_t b = 0; b < p; ++b) {
+        for (bid_t b = 0; b < num_partitions; ++b) {
             if (!equal_dbitset(dbitsets[b], bucket_info[b].is_mirror)) { return false; }
         }
         return true;

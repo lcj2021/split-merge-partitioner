@@ -82,4 +82,21 @@ class Timer
     double get_time() { return total; }
 };
 
+template <typename T>
+double jains_fairness(const std::vector<T>& L)
+{
+    double a = 0.0;
+    for (const auto& x : L) {
+        a += static_cast<double>(x);
+    }
+
+    double b = 0.0;
+    for (const auto& x : L) {
+        b += static_cast<double>(x) * static_cast<double>(x);
+    }
+    b *= static_cast<double>(L.size());
+
+    return (a * a) / b;
+}
+
 #endif

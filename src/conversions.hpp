@@ -12,15 +12,14 @@ class Converter
   protected:
     std::string basefilename;
     vid_t num_vertices;
-    size_t num_edges;
+    eid_t num_edges;
     std::vector<vid_t> degrees;
     std::ofstream fout;
     boost::unordered_map<vid_t, vid_t> name2vid;
 
     vid_t get_vid(vid_t v)
     {
-        auto it = name2vid.find(v);
-        if (it == name2vid.end()) {
+        if (!name2vid.contains(v)) {
             name2vid[v] = num_vertices;
             degrees.resize(num_vertices + 1);
             return num_vertices++;

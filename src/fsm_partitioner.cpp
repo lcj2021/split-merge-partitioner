@@ -13,13 +13,12 @@ DECLARE_bool(fastmerge);
 FsmPartitioner::FsmPartitioner(std::string basefilename)
     : basefilename(basefilename), writer(basefilename, FLAGS_write)
 {
-    p = FLAGS_p;
+    num_partitions = FLAGS_p;
     k = FLAGS_k;
     split_partitioner = nullptr;
     LOG(INFO) << "k = " << k
-                << ", p = " << p;
+                << ", num_partitions = " << num_partitions;
 
-    total_time.start();
     split_method = FLAGS_method == "fsm" ? "ne" : FLAGS_method.substr(4);
     if (split_method == "ne") {
         split_partitioner = std::make_unique<NePartitioner<adj_with_bid_t>>(FLAGS_filename, true);
@@ -39,18 +38,17 @@ FsmPartitioner::FsmPartitioner(std::string basefilename)
     num_vertices = split_partitioner->num_vertices;
     num_edges = split_partitioner->num_edges;
 
-    bucket_info.assign(k * p, BucketInfo(num_vertices));
-    for (bid_t i = 0; i < k * p; ++i) bucket_info[i].old_id = i;
+    bucket_info.assign(k * num_partitions, BucketInfo(num_vertices));
+    for (bid_t i = 0; i < k * num_partitions; ++i) bucket_info[i].old_id = i;
 
     edgelist2bucket.assign(num_edges, kInvalidBid);
-    occupied.assign(p, 0);
-    num_bucket_edges.assign(FLAGS_p, 0);
+    occupied.assign(num_partitions, 0);
 };
 
 void FsmPartitioner::merge()
 {
     size_t max_part_vertice_cnt = 0, all_part_vertice_cnt = 0; 
-    for (bid_t b = 0; b < p * k; ++b) {
+    for (bid_t b = 0; b < num_partitions * k; ++b) {
         bucket_info[b].replicas = bucket_info[b].is_mirror.popcount();
         max_part_vertice_cnt = std::max(max_part_vertice_cnt, bucket_info[b].replicas);
         all_part_vertice_cnt += bucket_info[b].replicas;
@@ -84,7 +82,7 @@ void FsmPartitioner::merge()
     } else {
         valid_bucket = precise_merge();
     }
-    for (bid_t b = 0; b < p * k; ++b) 
+    for (bid_t b = 0; b < num_partitions * k; ++b) 
         DLOG(INFO)   << "Bucket_info " << bucket_info[b].old_id 
                     << " vertices: " << bucket_info[b].replicas 
                     << " edges: " << bucket_info[b].occupied
@@ -157,7 +155,7 @@ std::unordered_map<bid_t, bid_t> FsmPartitioner::precise_merge()
     // < mirror_cnt, partitions_inside, index_in_bucket_info, old_id >
     using bucket_item = std::tuple<vid_t, bid_t, bid_t, bid_t>;
     std::vector<bucket_item> final_bucket;
-    for (bid_t b = 0; b < p; ++b) {
+    for (bid_t b = 0; b < num_partitions; ++b) {
         final_bucket.emplace_back(0, 0, b, b);
     }
     auto compute_new_bucket_size = [&](bid_t bid_a, bid_t bid_b) {
@@ -166,7 +164,7 @@ std::unordered_map<bid_t, bid_t> FsmPartitioner::precise_merge()
         return new_bucket.popcount();
     };
 
-    for (bid_t b = 0; b < p * k; ++b) {
+    for (bid_t b = 0; b < num_partitions * k; ++b) {
         auto &[is_mirror, occupied, old_id, replicas, is_chosen] = bucket_info[b];
 
         bid_t best_final_bucket = kInvalidBid;
@@ -209,66 +207,21 @@ std::unordered_map<bid_t, bid_t> FsmPartitioner::precise_merge()
 
 void FsmPartitioner::calculate_stats()
 {
-    std::cerr << std::string(25, '#') << " Calculating Statistics " << std::string(25, '#') << '\n';
-    std::vector<size_t> bucket2vcnt(p, 0);
-    
     sort(bucket_info.begin(), bucket_info.end(), [&](const auto &l, const auto &r) {
         return l.old_id < r.old_id;
     });
 
-    size_t max_part_vertice_cnt = 0, all_part_vertice_cnt = 0; 
-    size_t max_part_edge_cnt = 0, all_part_edge_cnt = 0; 
-    for (bid_t b = 0; b < p; ++b) {
-        bucket_info[b].replicas = bucket_info[b].is_mirror.popcount();
-        bucket2vcnt[b] = bucket_info[b].replicas;
-        occupied[b] = bucket_info[b].occupied;
-        max_part_vertice_cnt = std::max(max_part_vertice_cnt, bucket_info[b].replicas);
-        all_part_vertice_cnt += bucket_info[b].replicas;
-        max_part_edge_cnt = std::max(max_part_edge_cnt, bucket_info[b].occupied);
-        all_part_edge_cnt += bucket_info[b].occupied;
-        CHECK_EQ(bucket_info[b].occupied, num_bucket_edges[b]);
+    is_boundarys.resize(num_partitions);
+    occupied.resize(num_partitions);
+    for (bid_t b = 0; b < num_partitions; ++b) {
+        std::swap(bucket_info[b].is_mirror, this->is_boundarys[b]);
+        std::swap(bucket_info[b].occupied, this->occupied[b]);
     }
-
-    for (bid_t b = 0; b < p; ++b) 
-        LOG(INFO) << "Bucket_info: " << bucket_info[b].old_id 
-                << ", vertices: " << bucket_info[b].replicas 
-                << ", edges: " << bucket_info[b].occupied;
-    
-    double avg_vertice_cnt = static_cast<double>(all_part_vertice_cnt) / (p);
-    double avg_edge_cnt = static_cast<double>(all_part_edge_cnt) / (p);
-
-    double std_vertice_deviation = 0.0;
-    double std_edge_deviation = 0.0;
-    for (bid_t b = 0; b < p; ++b) {
-        std_vertice_deviation += pow(bucket2vcnt[b] - avg_vertice_cnt, 2);
-        std_edge_deviation += pow(occupied[b] - avg_edge_cnt, 2);
+    EdgePartitioner::calculate_stats(true);
+    for (bid_t b = 0; b < num_partitions; ++b) {
+        std::swap(this->is_boundarys[b], bucket_info[b].is_mirror);
+        std::swap(this->occupied[b], bucket_info[b].occupied);
     }
-    std_vertice_deviation = sqrt(static_cast<double>(std_vertice_deviation) / p);
-    std_edge_deviation = sqrt(static_cast<double>(std_edge_deviation) / p);
-    
-    LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
-    LOG(INFO) << "Max vertice count / avg vertice count: "
-              << (double)max_part_vertice_cnt / ((double)num_vertices / (p));
-    LOG(INFO) << "Max Vertice count: "
-              << max_part_vertice_cnt;
-    LOG(INFO) << "Avg Vertice count(No replicate): "
-              << num_vertices / p;
-    LOG(INFO) << "Vertice std_vertice_deviation / avg: "
-              << std_vertice_deviation / avg_vertice_cnt;
-
-    LOG(INFO) << std::string(20, '#') << "\tEdge       balance\t" << std::string(20, '#');
-    LOG(INFO) << "Max edge count / avg edge count: "
-              << (double)max_part_edge_cnt / avg_edge_cnt;
-    LOG(INFO) << "Max Edge count: "
-              << max_part_edge_cnt;
-    LOG(INFO) << "Avg Edge count: "
-              << num_edges / p;
-    LOG(INFO) << "Edge std_edge_deviation / avg: "
-              << std_edge_deviation / avg_edge_cnt;
-
-    CHECK_EQ(all_part_edge_cnt, num_edges);
-    LOG(INFO) << std::string(20, '#') << "\tReplicate    factor\t" << std::string(20, '#');
-    LOG(INFO) << "replication factor (final): " << (double)all_part_vertice_cnt / num_vertices;
 }
 
 
@@ -293,52 +246,49 @@ vid_t FsmPartitioner::merge_bucket(bid_t dst, bid_t src, bool &has_intersection)
 void FsmPartitioner::split()
 {
     LOG(INFO) << "partition `" << basefilename << "'";
-    LOG(INFO) << "number of partitions: " << p;
+    LOG(INFO) << "number of partitions: " << num_partitions;
 
-    Timer compute_timer, merge_timer;
+    Timer merge_timer, split_timer;
 
     LOG(INFO) << "partitioning...";
-    compute_timer.start();
 
     split_partitioner->split();
     {
+        for (bid_t bucket = 0; bucket < num_partitions * k; ++bucket) {
+            std::swap(split_partitioner->is_boundarys[bucket], bucket_info[bucket].is_mirror);
+            std::swap(split_partitioner->occupied[bucket], bucket_info[bucket].occupied);
+        }
+
+        std::swap(split_partitioner->partition_time, partition_time);
+        split_timer = partition_time;
+        partition_time.start();
+        
         if (split_method == "hep") {
-            std::swap(edges, split_partitioner->edges);
-            std::swap(degrees, split_partitioner->degrees);
-            std::swap(mem_graph, split_partitioner->mem_graph);
-            std::swap(edgelist2bucket, split_partitioner->edgelist2bucket);
-            for (bid_t bucket = 0; bucket < p * k; ++bucket) {
-                std::swap(split_partitioner->is_boundarys[bucket], bucket_info[bucket].is_mirror);
-                std::swap(split_partitioner->occupied[bucket], bucket_info[bucket].occupied);
-            }
+            std::swap(split_partitioner->edges, edges);
+            std::swap(split_partitioner->degrees, degrees);
+            std::swap(split_partitioner->mem_graph, mem_graph);
+            std::swap(split_partitioner->edgelist2bucket, edgelist2bucket);
             // std::cerr << "edgelist2bucket.size: " << edgelist2bucket.size() << std::endl;
             
             // if (edges.size() == 0) {
-            //     compute_timer.stop();
             //     LOG(INFO) << "Loading edges list...";
             //     std::ifstream fin(binedgelist_name(basefilename),
             //             std::ios::binary | std::ios::ate); 
             //     fin.seekg(sizeof(num_vertices) + sizeof(num_edges), std::ios::beg);
             //     edges.resize(num_edges);
             //     fin.read((char *)&edges[0], sizeof(edge_t) * num_edges);
-            //     compute_timer.start();
             // }
         } else {
-            std::swap(edges, split_partitioner->edges);
-            std::swap(edgelist2bucket, split_partitioner->edgelist2bucket);
-            for (bid_t bucket = 0; bucket < p * k; ++bucket) {
-                std::swap(split_partitioner->is_boundarys[bucket], bucket_info[bucket].is_mirror);
-                std::swap(split_partitioner->occupied[bucket], bucket_info[bucket].occupied);
-            }
+            std::swap(split_partitioner->edges, edges);
+            std::swap(split_partitioner->edgelist2bucket, edgelist2bucket);
+            
             if (edges.size() == 0) {
-                compute_timer.stop();
                 LOG(INFO) << "Loading edges list...";
                 std::ifstream fin(binedgelist_name(basefilename),
                         std::ios::binary | std::ios::ate); 
                 fin.seekg(sizeof(num_vertices) + sizeof(num_edges), std::ios::beg);
                 edges.resize(num_edges);
                 fin.read((char *)&edges[0], sizeof(edge_t) * num_edges);
-                compute_timer.start();
             }
         }
         
@@ -351,16 +301,13 @@ void FsmPartitioner::split()
         merge();
     }
     merge_timer.stop();
-
-    double end_merge_time = merge_timer.get_time();
-    LOG(INFO) << "time used for merging: " << end_merge_time;
+    partition_time.stop();
 
     CHECK_EQ(assigned_edges, num_edges);
 
-    compute_timer.stop();
-    double end_compute_time = compute_timer.get_time();
-    LOG(INFO) << "time used for spliting: " << end_compute_time - end_merge_time;
-    LOG(INFO) << "time used for spliting and merging: " << end_compute_time;
+    LOG(INFO) << "spliting time: " << split_timer.get_time();
+    LOG(INFO) << "merging time: " << merge_timer.get_time();
+    LOG(INFO) << "partitioning time: " << partition_time.get_time();
 
     calculate_stats();
 
@@ -369,6 +316,8 @@ void FsmPartitioner::split()
     } else {
         CHECK_EQ(check_edge(), true);
     }
+
+
 
     if (FLAGS_write) 
         LOG(INFO) << "Writing result...";

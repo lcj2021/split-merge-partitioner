@@ -30,19 +30,19 @@ NePartitioner<TAdj>::NePartitioner(std::string basefilename, bool need_k_split)
               << ", num_edges: " << num_edges;
     CHECK_EQ(sizeof(vid_t) + sizeof(eid_t) + num_edges * sizeof(edge_t), filesize);
 
-    p = FLAGS_p;
+    num_partitions = FLAGS_p;
     if (need_k_split) {
-        p *= FLAGS_k;
+        num_partitions *= FLAGS_k;
     }
 
     average_degree = num_edges * 2.0 / num_vertices;
     assigned_edges = 0;
-    capacity = static_cast<double>(num_edges) * BALANCE_RATIO / p + 1;
-    occupied.assign(p, 0);
+    capacity = static_cast<double>(num_edges) * BALANCE_RATIO / num_partitions + 1;
+    occupied.assign(num_partitions, 0);
     adj_out.resize(num_vertices);
     adj_in.resize(num_vertices);
-    is_cores.assign(p, dense_bitset(num_vertices));
-    is_boundarys.assign(p, dense_bitset(num_vertices));
+    is_cores.assign(num_partitions, dense_bitset(num_vertices));
+    is_boundarys.assign(num_partitions, dense_bitset(num_vertices));
     dis.param(std::uniform_int_distribution<vid_t>::param_type(0, num_vertices - 1));
     if (need_k_split) {
         edgelist2bucket.assign(num_edges, kInvalidBid);
@@ -78,11 +78,11 @@ NePartitioner<TAdj>::NePartitioner(std::string basefilename, bool need_k_split)
 template <typename TAdj>
 void NePartitioner<TAdj>::assign_remaining()
 {
-    auto &is_boundary = is_boundarys[p - 1], &is_core = is_cores[p - 1];
+    auto &is_boundary = is_boundarys[num_partitions - 1], &is_core = is_cores[num_partitions - 1];
     for (vid_t u = 0; u < num_vertices; ++u) {
         for (auto &i : adj_out[u]) {
             if (edges[i.v].valid()) {
-                assign_edge(p - 1, u, edges[i.v].second, i.v);
+                assign_edge(num_partitions - 1, u, edges[i.v].second, i.v);
                 is_boundary.set_bit_unsync(u);
                 is_boundary.set_bit_unsync(edges[i.v].second);
             }
@@ -92,7 +92,7 @@ void NePartitioner<TAdj>::assign_remaining()
     for (vid_t i = 0; i < num_vertices; ++i) {
         if (is_boundary.get(i)) {
             is_core.set_bit_unsync(i);
-            for (bid_t b = 0; b < p - 1; ++b) {
+            for (bid_t b = 0; b < num_partitions - 1; ++b) {
                 if (is_cores[b].get(i)) {
                     is_core.set_unsync(i, false);
                     break;
@@ -103,74 +103,16 @@ void NePartitioner<TAdj>::assign_remaining()
 }
 
 template <typename TAdj>
-void NePartitioner<TAdj>::calculate_stats()
-{
-    std::cerr << std::string(25, '#') << " Calculating Statistics " << std::string(25, '#') << '\n';
-    std::vector<vid_t> num_bucket_vertices(p, 0);
-    for (bid_t b = 0; b < p; ++b) {
-        num_bucket_vertices[b] = is_boundarys[b].popcount();
-    }
-    vid_t max_part_vertice_cnt = *std::max_element(num_bucket_vertices.begin(), num_bucket_vertices.end());
-    vid_t all_part_vertice_cnt = accumulate(num_bucket_vertices.begin(), num_bucket_vertices.end(), (vid_t)0);
-    eid_t max_part_edge_cnt = *std::max_element(occupied.begin(), occupied.end());
-    eid_t all_part_edge_cnt = accumulate(occupied.begin(), occupied.end(), (eid_t)0);
-
-    for (bid_t b = 0; b < p; ++b) {
-        LOG(INFO) << "Bucket_info: " << b
-                << ", vertices: " << num_bucket_vertices[b]
-                << ", edges: " << occupied[b];
-    }
-    
-    double avg_vertice_cnt = static_cast<double>(all_part_vertice_cnt) / p;
-    double avg_edge_cnt = static_cast<double>(all_part_edge_cnt) / p;
-
-    double std_vertice_deviation = 0.0;
-    double std_edge_deviation = 0.0;
-    for (bid_t b = 0; b < p; ++b) {
-        std_vertice_deviation += pow(num_bucket_vertices[b] - avg_vertice_cnt, 2);
-        std_edge_deviation += pow(occupied[b] - avg_edge_cnt, 2);
-    }
-    std_vertice_deviation = sqrt(static_cast<double>(std_vertice_deviation) / p);
-    std_edge_deviation = sqrt(static_cast<double>(std_edge_deviation) / p);
-
-    LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
-    LOG(INFO) << "Max vertice count / avg vertice count: "
-              << (double)max_part_vertice_cnt / ((double)num_vertices / (p));
-    LOG(INFO) << "Max Vertice count: "
-              << max_part_vertice_cnt;
-    LOG(INFO) << "Avg Vertice count(No replicate): "
-              << num_vertices / p;
-    LOG(INFO) << "Vertice std_vertice_deviation / avg: "
-              << std_vertice_deviation / avg_vertice_cnt;
-
-    LOG(INFO) << std::string(20, '#') << "\tEdge       balance\t" << std::string(20, '#');
-    LOG(INFO) << "Max edge count / avg edge count: "
-              << (double)max_part_edge_cnt / avg_edge_cnt;
-    LOG(INFO) << "Max Edge count: "
-              << max_part_edge_cnt;
-    LOG(INFO) << "Avg Edge count: "
-              << num_edges / p;
-    LOG(INFO) << "Edge std_edge_deviation / avg: "
-              << std_edge_deviation / avg_edge_cnt;
-
-    CHECK_EQ(all_part_edge_cnt, num_edges);
-    LOG(INFO) << std::string(20, '#') << "\tReplicate    factor\t" << std::string(20, '#');
-    LOG(INFO) << "replication factor (final): " << (double)all_part_vertice_cnt / num_vertices;
-}
-
-template <typename TAdj>
 void NePartitioner<TAdj>::split()
 {
     LOG(INFO) << "partition `" << basefilename << "'";
-    LOG(INFO) << "number of partitions: " << p;
-
-    Timer compute_timer;
+    LOG(INFO) << "number of partitions: " << num_partitions;
 
     min_heap.reserve(num_vertices);
 
     LOG(INFO) << "partitioning...";
-    compute_timer.start();
-    for (bucket = 0; bucket < p - 1; ++bucket) {
+    partition_time.start();
+    for (bucket = 0; bucket < num_partitions - 1; ++bucket) {
         std::cerr << bucket << ", ";
         DLOG(INFO) << "sample size: " << adj_out.num_edges();
         while (occupied[bucket] < capacity) {
@@ -213,16 +155,19 @@ void NePartitioner<TAdj>::split()
             }
         }
     }
-    bucket = p - 1;
+    bucket = num_partitions - 1;
     std::cerr << bucket << std::endl;
     assign_remaining();
-    compute_timer.stop();
 
-    LOG(INFO) << "time used for partitioning: " << compute_timer.get_time();
+    partition_time.stop();
+    total_time.stop();
+
+    if (!need_k_split) {
+        LOG(INFO) << "partitioning time: " << partition_time.get_time();
+        LOG(INFO) << "total time: " << total_time.get_time();
+    }
 
     CHECK_EQ(assigned_edges, num_edges);
 
-    total_time.stop();
-    LOG(INFO) << "total partition time: " << total_time.get_time();
     calculate_stats();
 }

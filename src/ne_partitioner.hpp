@@ -11,7 +11,7 @@
 
 /* Neighbor Expansion (NE) */
 template <typename TAdj>
-class NePartitioner: public AdjListPartitioner<TAdj>
+class NePartitioner: public AdjListEPartitioner<TAdj>
 {
 private:
     const double BALANCE_RATIO = 1.00;
@@ -19,7 +19,7 @@ private:
     std::string basefilename;
 
     eid_t assigned_edges;
-    bid_t p, bucket;
+    bid_t bucket;
     double average_degree;
     eid_t capacity;
 
@@ -27,15 +27,21 @@ private:
     MinHeap<vid_t, vid_t> min_heap;
     std::vector<dense_bitset> is_cores;
 
-    using AdjListPartitioner<TAdj>::total_time;
-    using AdjListPartitioner<TAdj>::num_vertices;
-    using AdjListPartitioner<TAdj>::num_edges;
-    using AdjListPartitioner<TAdj>::occupied;
-    using AdjListPartitioner<TAdj>::is_boundarys;
-    using AdjListPartitioner<TAdj>::edges;
-    using AdjListPartitioner<TAdj>::degrees;
-    using AdjListPartitioner<TAdj>::edgelist2bucket;
-
+    /// @note For derived classes of a class template, 
+    /// if you want to inherit member variables of the base class, 
+    /// you need to use the using `keyword' to import member variables of the base class
+    using AdjListEPartitioner<TAdj>::total_time;
+    using AdjListEPartitioner<TAdj>::partition_time;
+    using AdjListEPartitioner<TAdj>::num_vertices;
+    using AdjListEPartitioner<TAdj>::num_edges;
+    using AdjListEPartitioner<TAdj>::num_partitions;
+    
+    using AdjListEPartitioner<TAdj>::occupied;
+    using AdjListEPartitioner<TAdj>::is_boundarys;
+    using AdjListEPartitioner<TAdj>::edges;
+    using AdjListEPartitioner<TAdj>::degrees;
+    using AdjListEPartitioner<TAdj>::edgelist2bucket;
+    using AdjListEPartitioner<TAdj>::calculate_stats;
 
     vid_t rand_vertice_id;
     std::random_device rd;
@@ -45,34 +51,7 @@ private:
     bool need_k_split;
     edgepart_writer<vid_t, bid_t> writer;
 
-    int check_edge(const edge_t *e)
-    {
-        for (bid_t b = 0; b < bucket; ++b) {
-            auto &is_boundary = is_boundarys[b];
-            if (is_boundary.get(e->first) && is_boundary.get(e->second) &&
-                occupied[b] < capacity) {
-                return b;
-            }
-        }
-
-        for (bid_t b = 0; b < bucket; ++b) {
-            auto &is_core = is_cores[b], &is_boundary = is_boundarys[b];
-            if ((is_core.get(e->first) || is_core.get(e->second)) &&
-                occupied[b] < capacity) {
-                if (is_core.get(e->first) && degrees[e->second] > average_degree)
-                    continue;
-                if (is_core.get(e->second) && degrees[e->first] > average_degree)
-                    continue;
-                is_boundary.set_bit(e->first);
-                is_boundary.set_bit(e->second);
-                return b;
-            }
-        }
-
-        return p;
-    }
-
-    void assign_edge(int bucket, vid_t from, vid_t to, size_t edge_id)
+    void assign_edge(bid_t bucket, vid_t from, vid_t to, size_t edge_id)
     {
         writer.save_edge(from, to, bucket);
         if (need_k_split) {
@@ -181,7 +160,6 @@ private:
     }
 
     void assign_remaining();
-    void calculate_stats();
 
 public:
     NePartitioner(std::string basefilename, bool need_k_split);

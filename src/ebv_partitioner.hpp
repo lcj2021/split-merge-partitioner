@@ -6,7 +6,7 @@
 #include "graph.hpp"
 #include "partitioner.hpp"
 
-class EbvPartitioner : public EdgeListPartitioner
+class EbvPartitioner : public EdgeListEPartitioner
 {
   private:
     std::string basefilename;
@@ -14,14 +14,13 @@ class EbvPartitioner : public EdgeListPartitioner
     std::mt19937 gen;
 
     double avg_edge_cnt;
-    bid_t p;
 
     std::vector<vid_t> num_bucket_vertices;
 
     edgepart_writer<vid_t, bid_t> writer;
     eid_t num_vertices_all_buckets;
 
-    inline void assign_edge(bid_t bucket, vid_t from, vid_t to, eid_t edge_id) noexcept
+    void assign_edge(bid_t bucket, vid_t from, vid_t to, eid_t edge_id)
     {
         writer.save_edge(from, to, bucket);
         edgelist2bucket[edge_id] = bucket;
@@ -39,10 +38,8 @@ class EbvPartitioner : public EdgeListPartitioner
     }
 
     // returns bucket id where score is best for edge (u,v)
-    inline bid_t best_scored_partition(vid_t u, vid_t v, eid_t edge_id) noexcept; 
-    inline double compute_partition_score(vid_t u, vid_t v, bid_t bucket_id, eid_t edge_id) noexcept;
-
-    void calculate_stats();
+    bid_t best_scored_partition(vid_t u, vid_t v, eid_t edge_id); 
+    double compute_partition_score(vid_t u, vid_t v, bid_t bucket_id, eid_t edge_id);
 
   public:
     EbvPartitioner(std::string basefilename, bool need_k_split);

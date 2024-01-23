@@ -11,7 +11,7 @@
 
 /* Hybrid Edge Partitioner (HEP) */
 template <typename TAdj>
-class HepPartitioner : public AdjListPartitioner<TAdj>
+class HepPartitioner : public AdjListEPartitioner<TAdj>
 {
 private:
     std::string basefilename;
@@ -21,12 +21,9 @@ private:
     double lambda;
     bool extended_metrics;
 
-    bool stream_random; // whether to use random streaming for the second phase of HEP
-
-
     // vid_t num_vertices;
     eid_t assigned_edges, num_h2h_edges;
-    bid_t p, bucket; 
+    bid_t bucket; 
     double average_degree;
     eid_t capacity;
     eid_t capacity_in_memory; // capacity per partition of in memory partitioning
@@ -34,15 +31,14 @@ private:
     eid_t min_size = 0; // currently smallest partition
     eid_t max_size = 0; // currently largest partition
 
-    bool write_out_partitions = false; // whether the partitions should be written to the out-file or not
-    bool write_low_degree_edgelist = false; // whether edges incident to a low-degree vertex should be written out to a file. useful if this sub-graph should be analyzed separately.
+    // whether the partitions should be written to the out-file or not
+    bool write_out_partitions = false; 
+    // whether edges incident to a low-degree vertex should be written out to a file. 
+    // useful if this sub-graph should be analyzed separately.
+    bool write_low_degree_edgelist = false; 
 
-    // std::vector<edge_t> edges;
-    // mem_graph_t<TAdj> mem_graph; // graph for in-memory processing
     double high_degree_factor;
     HepMinHeap<vid_t, vid_t> min_heap;
-    // std::vector<eid_t> occupied;
-    // std::vector<dense_bitset> is_boundarys; 
     dense_bitset is_in_a_core;
     dense_bitset is_high_degree;
     dense_bitset has_high_degree_neighbor;
@@ -50,15 +46,18 @@ private:
     /// @note For derived classes of a class template, 
     /// if you want to inherit member variables of the base class, 
     /// you need to use the using keyword to import member variables of the base class
-    using AdjListPartitioner<TAdj>::total_time;
+    using AdjListEPartitioner<TAdj>::total_time;
+    using AdjListEPartitioner<TAdj>::partition_time;
     using PartitionerBase::num_vertices;
     using PartitionerBase::num_edges;
-    using AdjListPartitioner<TAdj>::occupied;
-    using AdjListPartitioner<TAdj>::is_boundarys;
-    using AdjListPartitioner<TAdj>::edges;
-    using AdjListPartitioner<TAdj>::degrees;
-    using AdjListPartitioner<TAdj>::edgelist2bucket;
-    using AdjListPartitioner<TAdj>::mem_graph;
+    using PartitionerBase::num_partitions;
+    using AdjListEPartitioner<TAdj>::occupied;
+    using AdjListEPartitioner<TAdj>::is_boundarys;
+    using AdjListEPartitioner<TAdj>::edges;
+    using AdjListEPartitioner<TAdj>::degrees;
+    using AdjListEPartitioner<TAdj>::edgelist2bucket;
+    using AdjListEPartitioner<TAdj>::mem_graph;
+    using AdjListEPartitioner<TAdj>::calculate_stats;
 
 
     vid_t search_index_free_vertex = 0;
@@ -249,10 +248,10 @@ private:
 
     bool check_edge_hybrid()
     {
-        std::vector<dense_bitset> dbitsets(p, dense_bitset(num_vertices));
+        std::vector<dense_bitset> dbitsets(num_partitions, dense_bitset(num_vertices));
         for (vid_t vid = 0; vid < num_vertices; ++vid) {
             bool assigned_to_a_part = false;
-            for (bid_t b = 0; b < p; ++b) {
+            for (bid_t b = 0; b < num_partitions; ++b) {
                 if (is_boundarys[b].get(vid)) {
                     assigned_to_a_part = true;
                     break;
@@ -283,7 +282,7 @@ public:
     HepPartitioner(std::string basefilename, bool need_k_split);
     void split();
 
-    void calculate_stats();
+    // void calculate_stats();
 };
 
 /// @brief AdjList: each entry maintains target vertex and the bucket of the edge 

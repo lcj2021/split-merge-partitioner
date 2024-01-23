@@ -17,16 +17,17 @@ endif()
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Release" "Debug")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g -std=c++17")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_EXE_LINK_FLAGS_RELEASE} -Ofast ")
-# -DNDEBUG
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_EXE_LINK_FLAGS_RELEASE} -Ofast -DNDEBUG")
+# 
 
 FIND_PACKAGE(OpenMP REQUIRED)
 INCLUDE_DIRECTORIES(${OpenMP_CXX_INCLUDE_DIRS})
 
+# CMake will automatically detect the depending .hpp of the corresponding .cpp 
+# and add them to the building phase 
 add_executable (
     main
     src/main.cpp
-    src/util.cpp
     src/graph.cpp
     src/hep_graph.cpp
     src/fsm_partitioner.cpp
@@ -40,6 +41,7 @@ add_executable (
     src/hybridbl_partitioner.cpp
     src/hybrid_partitioner.cpp
     src/vertex2edgepart.cpp
+    # src/edgelist2adjlist.hpp
     # src/test.cpp
     src/conversions.cpp
 )

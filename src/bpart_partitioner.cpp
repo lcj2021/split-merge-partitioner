@@ -32,12 +32,12 @@ BPartPartitioner<TAdj>::BPartPartitioner(std::string basefilename, bool need_k_s
               << ", num_edges: " << num_edges;
     CHECK_EQ(sizeof(vid_t) + sizeof(eid_t) + num_edges * sizeof(edge_t), filesize);
 
-    p = FLAGS_p;
+    num_partitions = FLAGS_p;
     if (need_k_split) {
-        p *= FLAGS_k;
+        num_partitions *= FLAGS_k;
     }
 
-    // alpha = sqrt(p) * static_cast<double>(num_edges) / pow(num_vertices, 1.5);
+    // alpha = sqrt(num_partitions) * static_cast<double>(num_edges) / pow(num_vertices, 1.5);
 
     adj_out.resize(num_vertices);
     adj_in.resize(num_vertices);
@@ -67,8 +67,8 @@ void BPartPartitioner<TAdj>::split()
     vid_t aim_subgraph_vertex = (num_vertices + FLAGS_p - 1) / FLAGS_p;
     eid_t aim_subgraph_edge = (num_edges + FLAGS_p - 1) / FLAGS_p;
 
-    std::vector<vid_t> order(num_vertices);
-    std::iota(order.begin(), order.end(), (vid_t)0);
+    // std::vector<vid_t> order(num_vertices);
+    // std::iota(order.begin(), order.end(), (vid_t)0);
     // std::mt19937 engine(123);
     // std::shuffle(order.begin(), order.end(), engine);
 
@@ -79,20 +79,20 @@ void BPartPartitioner<TAdj>::split()
         LOG(INFO) << "Iteration " << iter;
         
         num_remain_partition = FLAGS_p - num_finished_partition;
-        auto& num_under_partition = p;
+        auto& num_under_partition = num_partitions;
         num_under_partition = (1 << (iter)) * num_remain_partition;
         auto& average_balance = capacity;
         average_balance = static_cast<double>(num_vertices) / num_under_partition * 2.0;
 
+        // fine-grained 
         w_.assign(num_under_partition, 0);
         is_boundarys.assign(num_under_partition, dense_bitset(num_vertices));
-
-        // fine-grained 
         num_bucket_vertices.assign(num_under_partition, 0);
-        num_bucket_edges.assign(num_under_partition, 0);
+        occupied.assign(num_under_partition, 0);
 
         for (vid_t v = 0; v < num_vertices; ++v) {
-            vid_t vid = order[v];
+            // vid_t vid = order[v];
+            vid_t vid = v;
             // already in fininshed partition
             if (vertex2bucket[vid] != kInvalidBid) {
                 continue;
@@ -106,7 +106,7 @@ void BPartPartitioner<TAdj>::split()
         }
 
         std::vector<vid_t> num_last_round_vertex(num_bucket_vertices);
-        std::vector<eid_t> num_last_round_edge(num_bucket_edges);
+        std::vector<eid_t> num_last_round_edge(occupied);
 
         std::vector<uint32_t> id_last_round(num_under_partition);
         std::iota(id_last_round.begin(), id_last_round.end(), 0);
@@ -209,26 +209,26 @@ void BPartPartitioner<TAdj>::split()
     total_time.stop();
     LOG(INFO) << "total partition time: " << total_time.get_time();
     
-    num_bucket_vertices.assign(FLAGS_p, 0);
-    num_bucket_edges.assign(FLAGS_p, 0);
+    num_partitions = FLAGS_p;
+    w_.assign(num_partitions, 0);
+    is_boundarys.assign(num_partitions, dense_bitset(num_vertices));
+    num_bucket_vertices.assign(num_partitions, 0);
+    occupied.assign(num_partitions, 0);
 
     for (vid_t vid = 0; vid < num_vertices; ++vid) {
         bid_t bucket = vertex2bucket[vid];
         writer.save_vertex(vid, bucket);
-        num_bucket_vertices[bucket] += 1;
+        assign_vertex(bucket, vid, 0);
     }
-    eid_t total_cut_edges = 0;
     for (const auto &[u, v] : edges) {
         bid_t bu = vertex2bucket[u], bv = vertex2bucket[v];
         if (bu != bv) {
-            ++total_cut_edges;
-            num_bucket_edges[bu] += 1;
-            num_bucket_edges[bv] += 1;
+            occupied[bu] += 1;
+            occupied[bv] += 1;
         } else {
-            num_bucket_edges[bu] += 1;
+            occupied[bu] += 1;
         }
     }
-    LOG(INFO) << "edge_cut_ratio: " << (static_cast<double>(total_cut_edges)) / num_edges;
 
     calculate_stats();
 }
@@ -241,7 +241,7 @@ BPartPartitioner<TAdj>::best_scored_partition(vid_t vid)
 	double best_score = -1e18;
 	bid_t best_partition = kInvalidBid;
     eid_t final_additional_edges = 0;
-	for (bid_t b = 0; b < p; ++b) {
+	for (bid_t b = 0; b < num_partitions; ++b) {
         if (w_[b] >= capacity)  continue;
 		const auto &[score, additional_edges] = compute_partition_score(vid, b);
         if (score > best_score) {
@@ -251,7 +251,7 @@ BPartPartitioner<TAdj>::best_scored_partition(vid_t vid)
         }
 	}
     if (best_partition == kInvalidBid) {
-        best_partition = gen() % p;
+        best_partition = gen() % num_partitions;
         const auto &[overlap, neighbors_cnt] = overlap_partition_vertex(vid, best_partition);
         final_additional_edges = neighbors_cnt - overlap;
     }
@@ -298,68 +298,6 @@ void BPartPartitioner<TAdj>::assign_vertex(bid_t bucket, vid_t vid, eid_t additi
     is_boundarys[bucket].set_bit_unsync(vid);
     
     num_bucket_vertices[bucket] += 1;
-    num_bucket_edges[bucket] += adj_out[vid].size();
-    w_[bucket] = static_cast<double>(num_bucket_vertices[bucket]) + num_bucket_edges[bucket] * 2.0 / average_degree;
-}
-
-
-template <typename TAdj>
-void BPartPartitioner<TAdj>::calculate_stats()
-{
-    std::cerr << std::string(25, '#') << " Calculating Statistics " << std::string(25, '#') << '\n';
-    
-    p = FLAGS_p;
-
-    size_t max_part_vertice_cnt = *std::max_element(num_bucket_vertices.begin(), num_bucket_vertices.end());
-    size_t all_part_vertice_cnt = accumulate(num_bucket_vertices.begin(), num_bucket_vertices.end(), (size_t)0);
-    size_t max_part_edge_cnt = *std::max_element(num_bucket_edges.begin(), num_bucket_edges.end());
-    size_t all_part_edge_cnt = accumulate(num_bucket_edges.begin(), num_bucket_edges.end(), (size_t)0);
-
-    double avg_vertice_cnt = static_cast<double>(all_part_vertice_cnt) / (p);
-    double avg_edge_cnt = static_cast<double>(all_part_edge_cnt) / (p);
-
-    double std_vertice_deviation = 0.0;
-    double std_edge_deviation = 0.0;
-    for (bid_t b = 0; b < p; ++b) {
-        std_vertice_deviation += pow(num_bucket_vertices[b] - avg_vertice_cnt, 2);
-        std_edge_deviation += pow(num_bucket_edges[b] - avg_edge_cnt, 2);
-    }
-
-    std_vertice_deviation = sqrt(static_cast<double>(std_vertice_deviation) / p);
-    std_edge_deviation = sqrt(static_cast<double>(std_edge_deviation) / p);
-
-    LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
-    LOG(INFO) << "Max vertice count / avg vertice count: "
-              << static_cast<double>(max_part_vertice_cnt) / (num_vertices / p);
-    LOG(INFO) << "Max Vertice count: "
-              << max_part_vertice_cnt;
-    LOG(INFO) << "Avg Vertice count(No replicate): "
-              << num_vertices / p;
-    LOG(INFO) << "Vertice std_vertice_deviation / avg: "
-              << std_vertice_deviation / avg_vertice_cnt;
-    LOG(INFO) << "Vertice jains_fairness: "
-              << jains_fairness<vid_t>(num_bucket_vertices);
-
-    LOG(INFO) << std::string(20, '#') << "\tEdge       balance\t" << std::string(20, '#');
-    LOG(INFO) << "Max edge count / avg edge count: "
-              << static_cast<double>(max_part_edge_cnt) / avg_edge_cnt;
-    LOG(INFO) << "Max Edge count: "
-              << max_part_edge_cnt;
-    LOG(INFO) << "Avg Edge count: "
-              << num_edges / p;
-    LOG(INFO) << "Edge std_edge_deviation / avg: "
-              << std_edge_deviation / avg_edge_cnt;
-    LOG(INFO) << "Edge jains_fairness: "
-              << jains_fairness<eid_t>(num_bucket_edges);
-
-
-    std::vector<bid_t> sorted_buckets(FLAGS_p);
-    std::iota(sorted_buckets.begin(), sorted_buckets.end(), 0);
-    std::sort(sorted_buckets.begin(), sorted_buckets.end(), [&](const auto& a, const auto& b) {
-        return num_bucket_vertices[a] < num_bucket_vertices[b];
-    });
-    LOG(INFO) << "partition |V| w |E|";
-    for (const auto& b : sorted_buckets) {
-        LOG(INFO) << b << "\t" << num_bucket_vertices[b] << "\t" << w_[b] << "\t" << num_bucket_edges[b];
-    }
+    occupied[bucket] += 0;
+    w_[bucket] = static_cast<double>(num_bucket_vertices[bucket]) + occupied[bucket] * 2.0 / average_degree;
 }

@@ -31,9 +31,9 @@ EbvPartitioner::EbvPartitioner(std::string basefilename, bool need_k_split)
               << ", num_edges: " << num_edges;
     CHECK_EQ(sizeof(vid_t) + sizeof(eid_t) + num_edges * sizeof(edge_t), filesize);
 
-    p = FLAGS_p;
+    num_partitions = FLAGS_p;
     if (need_k_split) {
-        p *= FLAGS_k;
+        num_partitions *= FLAGS_k;
     }
 
     edges.resize(num_edges);
@@ -41,9 +41,9 @@ EbvPartitioner::EbvPartitioner(std::string basefilename, bool need_k_split)
 
     LOG(INFO) << "constructing...";
 
-    is_boundarys.assign(p, dense_bitset(num_vertices));
-    occupied.assign(p, 0);
-    num_bucket_vertices.assign(p, 0);
+    is_boundarys.assign(num_partitions, dense_bitset(num_vertices));
+    occupied.assign(num_partitions, 0);
+    num_bucket_vertices.assign(num_partitions, 0);
     avg_edge_cnt = (double)num_edges / FLAGS_p;
     edgelist2bucket.assign(num_edges, kInvalidBid);
 
@@ -74,17 +74,17 @@ void EbvPartitioner::split()
 
     total_time.stop();
     LOG(INFO) << "total partition time: " << total_time.get_time();
-    for (bid_t b = 0; b < p; ++b) {
+    for (bid_t b = 0; b < num_partitions; ++b) {
         LOG(INFO) << b << ' ' << is_boundarys[b].popcount() << ' ' << occupied[b];
     }
     calculate_stats();
 }
 
-bid_t EbvPartitioner::best_scored_partition(vid_t u, vid_t v, eid_t edge_id) noexcept
+bid_t EbvPartitioner::best_scored_partition(vid_t u, vid_t v, eid_t edge_id)
 {
     double best_score = 1e18;
 	bid_t best_partition = kInvalidBid;
-	for (bid_t b = 0; b < p; ++b) {
+	for (bid_t b = 0; b < num_partitions; ++b) {
 		double score = compute_partition_score(u, v, b, edge_id);
 		if (score < best_score) {
 			best_score = score;
@@ -92,12 +92,12 @@ bid_t EbvPartitioner::best_scored_partition(vid_t u, vid_t v, eid_t edge_id) noe
 		}
 	}
     if (best_partition == kInvalidBid) {
-        best_partition = gen() % p;
+        best_partition = gen() % num_partitions;
     }
 	return best_partition;
 }
 
-double EbvPartitioner::compute_partition_score(vid_t u, vid_t v, bid_t bucket_id, eid_t edge_id) noexcept
+double EbvPartitioner::compute_partition_score(vid_t u, vid_t v, bid_t bucket_id, eid_t edge_id)
 {
 	double su = 0.0, sv = 0.0;
     bool u_is_boundary = is_boundarys[bucket_id].get(u), 
@@ -110,64 +110,8 @@ double EbvPartitioner::compute_partition_score(vid_t u, vid_t v, bid_t bucket_id
     }
 
     double imbalance = (double)occupied[bucket_id] / avg_edge_cnt
-                    + (double)num_bucket_vertices[bucket_id] / (num_vertices_all_buckets / p);
+                    + (double)num_bucket_vertices[bucket_id] / (num_vertices_all_buckets / num_partitions);
 
 	double score = (su + sv) + (imbalance);
 	return score;
-}
-
-void EbvPartitioner::calculate_stats()
-{
-    std::cerr << std::string(25, '#') << " Calculating Statistics " << std::string(25, '#') << '\n';
-    std::vector<vid_t> num_bucket_vertices(p, 0);
-    for (bid_t b = 0; b < p; ++b) {
-        num_bucket_vertices[b] = is_boundarys[b].popcount();
-    }
-    vid_t max_part_vertice_cnt = *std::max_element(num_bucket_vertices.begin(), num_bucket_vertices.end());
-    vid_t all_part_vertice_cnt = accumulate(num_bucket_vertices.begin(), num_bucket_vertices.end(), (vid_t)0);
-    eid_t max_part_edge_cnt = *std::max_element(occupied.begin(), occupied.end());
-    eid_t all_part_edge_cnt = accumulate(occupied.begin(), occupied.end(), (eid_t)0);
-
-    for (bid_t b = 0; b < p; ++b) {
-        LOG(INFO) << "Bucket_info: " << b
-                << ", vertices: " << num_bucket_vertices[b]
-                << ", edges: " << occupied[b];
-    }
-    
-    double avg_vertice_cnt = static_cast<double>(all_part_vertice_cnt) / p;
-    double avg_edge_cnt = static_cast<double>(all_part_edge_cnt) / p;
-
-    double std_vertice_deviation = 0.0;
-    double std_edge_deviation = 0.0;
-    for (bid_t b = 0; b < p; ++b) {
-        std_vertice_deviation += pow(num_bucket_vertices[b] - avg_vertice_cnt, 2);
-        std_edge_deviation += pow(occupied[b] - avg_edge_cnt, 2);
-    }
-    std_vertice_deviation = sqrt(static_cast<double>(std_vertice_deviation) / p);
-    std_edge_deviation = sqrt(static_cast<double>(std_edge_deviation) / p);
-
-    
-    LOG(INFO) << std::string(20, '#') << "\tVertice    balance\t" << std::string(20, '#');
-    LOG(INFO) << "Max vertice count / avg vertice count: "
-              << static_cast<double>(max_part_vertice_cnt) / (num_vertices / p);
-    LOG(INFO) << "Max Vertice count: "
-              << max_part_vertice_cnt;
-    LOG(INFO) << "Avg Vertice count(No replicate): "
-              << num_vertices / p;
-    LOG(INFO) << "Vertice std_vertice_deviation / avg: "
-              << std_vertice_deviation / avg_vertice_cnt;
-
-    LOG(INFO) << std::string(20, '#') << "\tEdge       balance\t" << std::string(20, '#');
-    LOG(INFO) << "Max edge count / avg edge count: "
-              << static_cast<double>(max_part_edge_cnt) / avg_edge_cnt;
-    LOG(INFO) << "Max Edge count: "
-              << max_part_edge_cnt;
-    LOG(INFO) << "Avg Edge count: "
-              << num_edges / p;
-    LOG(INFO) << "Edge std_edge_deviation / avg: "
-              << std_edge_deviation / avg_edge_cnt;
-
-    CHECK_EQ(all_part_edge_cnt, num_edges);
-    LOG(INFO) << std::string(20, '#') << "\tReplicate    factor\t" << std::string(20, '#');
-    LOG(INFO) << "replication factor (final): " << static_cast<double>(all_part_vertice_cnt) / num_vertices;
 }

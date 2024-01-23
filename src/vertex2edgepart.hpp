@@ -8,14 +8,14 @@
 #include "part_writer.hpp"
 #include "partitioner.hpp"
 
-class Vertex2EdgePart : public EdgeListPartitioner
+class Vertex2EdgePart : public EdgePartitioner
 {
 private:
 	std::string basefilename;
     std::random_device rd;
     std::mt19937 gen;
 
-    bid_t k, p;
+    bid_t k;
 
     int fin;
     off_t filesize;
@@ -23,7 +23,6 @@ private:
     std::vector<bid_t> vertex2bucket; // maps vertex id to partition id
     vid_t assigned_vertices;
 
-    boost::unordered_map<std::tuple<vid_t, vid_t>, eid_t> uv2edgeid;
     eid_t curr_edge_cnt;
 
     edgepart_writer<vid_t, bid_t> writer;
@@ -54,11 +53,12 @@ private:
     void init_datastructures()
     {
     	vertex2bucket.resize(num_vertices + 1, kInvalidBid);
-    	is_boundarys.resize(p * k, dense_bitset(num_vertices + 1));
-        occupied.assign(p * k, 0);
+    	is_boundarys.resize(num_partitions * k, dense_bitset(num_vertices + 1));
+        occupied.assign(num_partitions * k, 0);
 
-        bucket_info.assign(p * k, BucketInfo(num_edges));
-        for (bid_t b = 0; b < p * k; ++b) bucket_info[b].old_id = b;
+        bucket_info.assign(num_partitions * k, BucketInfo(num_edges));
+        for (bid_t b = 0; b < num_partitions * k; ++b) 
+            bucket_info[b].old_id = b;
     }
 
     eid_t rearrange_vertice(std::vector<edge_t> &e, const std::unordered_map<bid_t, bid_t> &valid_bucket)
@@ -88,7 +88,6 @@ private:
     }
 
     void merge();
-    void calculate_stats();
 
     size_t merge_bucket(vid_t dst, vid_t src, bool &has_intersection);
     std::unordered_map<bid_t, bid_t> fast_merge();
@@ -197,8 +196,12 @@ private:
         read_vertexpart();
         fin.read((char *)&edges[0], sizeof(edge_t) * num_edges);
 
-        std::shuffle(edges.begin(), edges.end(), rd);
-        for (auto &edge : edges) {
+        // std::shuffle(edges.begin(), edges.end(), rd);
+        for (eid_t eid = 0; eid < num_edges; ++eid) {
+            auto &edge = edges[eid];
+            if (eid % 500'000'000 == 0) {
+                LOG(INFO) << "edgelist lines read: " << eid;
+            }
             vid_t &from = edge.first, &to = edge.second;
             ++from;
             ++to;
@@ -216,7 +219,6 @@ private:
 
 public:
 	Vertex2EdgePart(std::string basefilename, bool need_k_split);
-	virtual ~Vertex2EdgePart();
 
 	void split();
 
