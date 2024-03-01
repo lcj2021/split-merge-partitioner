@@ -21,7 +21,8 @@ struct adj_t {
  * Differentiating in and out length allows for preserving direction in a directed graph.
  */
 template <typename TAdj>
-class mem_adjlist_t {
+class mem_adjlist_t 
+{
 public:
 	TAdj *adj; // link into the column array
     vid_t len_out;
@@ -84,7 +85,8 @@ template class mem_adjlist_t<adj_with_bid_t>;
  * in-memory graph
  */
 template <typename TAdj>
-class mem_graph_t {
+class mem_graph_t 
+{
 
 public:
     vid_t num_vertices;

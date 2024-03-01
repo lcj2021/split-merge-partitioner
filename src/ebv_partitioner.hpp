@@ -3,7 +3,7 @@
 
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
-#include "graph.hpp"
+#include "ne_graph.hpp"
 #include "partitioner.hpp"
 
 class EbvPartitioner : public EdgeListEPartitioner
@@ -23,7 +23,7 @@ class EbvPartitioner : public EdgeListEPartitioner
     void assign_edge(bid_t bucket, vid_t from, vid_t to, eid_t edge_id)
     {
         writer.save_edge(from, to, bucket);
-        edgelist2bucket[edge_id] = bucket;
+        // edgelist2bucket[edge_id] = bucket;
         ++occupied[bucket];
         if (!is_boundarys[bucket].get(from)) {
             ++num_bucket_vertices[bucket];

@@ -7,7 +7,7 @@
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
 #include "partitioner.hpp"
-#include "graph.hpp"
+#include "ne_graph.hpp"
 
 /* Neighbor Expansion (NE) */
 template <typename TAdj>
@@ -76,7 +76,7 @@ private:
             min_heap.insert(adj_out[vid].size() + adj_in[vid].size(), vid);
         }
 
-        rep (direction, 2) {
+        for (int direction = 0; direction < 2; ++direction) {
             adjlist_t &neighbors = direction ? adj_out[vid] : adj_in[vid];
             for (size_t i = 0; i < neighbors.size();) {
                 if (edges[neighbors[i].v].valid()) {

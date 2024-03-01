@@ -5,7 +5,7 @@
 
 template <typename TAdj>
 FennelPartitioner<TAdj>::FennelPartitioner(std::string basefilename, bool need_k_split)
-    : basefilename(basefilename), rd(), gen(rd()), writer(basefilename, FLAGS_write) // Vertex partitioner must record basefilename.part 
+    : basefilename(basefilename), rd(), gen(rd()), writer(basefilename, FLAGS_write) 
 {
     Timer convert_timer;
     convert_timer.start();
@@ -39,8 +39,8 @@ FennelPartitioner<TAdj>::FennelPartitioner(std::string basefilename, bool need_k
     alpha = sqrt(num_partitions) * (double)num_edges / pow(num_vertices, 1.5);
     // alpha = 1.5;
 
-    adj_out.resize(num_vertices);
-    adj_in.resize(num_vertices);
+    graph.resize(num_vertices);
+
     is_boundarys.assign(num_partitions, dense_bitset(num_vertices));
     occupied.assign(num_partitions, 0);
     w_.assign(num_partitions, 0);
@@ -48,22 +48,19 @@ FennelPartitioner<TAdj>::FennelPartitioner(std::string basefilename, bool need_k
     // capacity = (double)num_edges * 2 * 1.05 / num_partitions + 1; //will be used to as stopping criterion later
     capacity = (double)num_vertices * 1.1 / num_partitions + 1; // will be used to as stopping criterion later
 
-    edges.resize(num_edges);
-    fin.read((char *)&edges[0], sizeof(edge_t) * num_edges);
-
     LOG(INFO) << "constructing...";
-    adj_out.build(edges);
-    adj_in.build_reverse(edges);
 
     degrees.resize(num_vertices);
     std::ifstream degree_file(degree_name(basefilename), std::ios::binary);
     degree_file.read((char *)&degrees[0], num_vertices * sizeof(vid_t));
     degree_file.close();
+    graph.stream_build(fin, num_edges, degrees);
 }
 
 template <typename TAdj>
 void FennelPartitioner<TAdj>::split()
 {
+    partition_time.start();
     // std::vector<vid_t> order(num_vertices);
     // std::iota(order.begin(), order.end(), (vid_t)0);
     // std::mt19937 engine(123);
@@ -79,8 +76,9 @@ void FennelPartitioner<TAdj>::split()
         assign_vertex(bucket, vid, additional_edges);
     }
 
+    partition_time.stop();
     total_time.stop();
-    LOG(INFO) << "total partition time: " << total_time.get_time();
+    LOG(INFO) << "partition time: " << partition_time.get_time();
     calculate_stats();
 }
 
@@ -112,15 +110,12 @@ template <typename TAdj>
 std::tuple<vid_t, vid_t> 
 FennelPartitioner<TAdj>::overlap_partition_vertex(vid_t vid, bid_t bucket_id) 
 {
-    vid_t overlap = 0, neighbors_cnt = 0;
-    for (int direction = 0; direction < 2; ++direction) {
-        auto &neighbors = (direction ? adj_out[vid] : adj_in[vid]);
-        neighbors_cnt += neighbors.size();
-        for (size_t i = 0; i < neighbors.size(); ++i) {
-            vid_t uid = direction ? edges[neighbors[i].v].second : edges[neighbors[i].v].first;
-            if (is_boundarys[bucket_id].get(uid)) {
-                ++overlap;
-            }
+    AdjList<AdjEntryVid>& neighbors = graph[vid];
+    vid_t overlap = 0, neighbors_cnt = neighbors.size();
+    for (vid_t i = 0; i < neighbors.size(); ++i) {
+        vid_t uid = neighbors[i].vid;
+        if (is_boundarys[bucket_id].get(uid)) {
+            ++overlap;
         }
     }
     return {overlap, neighbors_cnt};

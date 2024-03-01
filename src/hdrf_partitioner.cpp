@@ -33,9 +33,6 @@ HdrfPartitioner::HdrfPartitioner(std::string basefilename, bool need_k_split)
         num_partitions *= FLAGS_k;
     }
 
-    edges.resize(num_edges);
-    fin.read((char *)&edges[0], sizeof(edge_t) * num_edges);
-
     LOG(INFO) << "constructing...";
 
     is_boundarys.assign(num_partitions, dense_bitset(num_vertices));
@@ -52,36 +49,78 @@ HdrfPartitioner::HdrfPartitioner(std::string basefilename, bool need_k_split)
 
 void HdrfPartitioner::split()
 {
+    partition_time.start();
     // std::shuffle(edges.begin(), edges.end(), rd);
-    for (eid_t eid = 0; eid < num_edges; ++eid) {
-        edge_t e = edges[eid];
-        if (eid % 50000000 == 0) {
-            LOG(INFO) << "Processing edges " << eid;
-        }
-        vid_t u = e.first, v = e.second;
-        bid_t bucket = best_scored_partition(u, v); // according to ebv scoring
-        assign_edge(bucket, u, v, eid);
-        if (occupied[bucket] > max_size) {
-            max_size = occupied[bucket];
-        }
-        if (occupied[bucket] == min_size) {
-            int min_sized_bucket_count = 0;
-            for (bid_t b = 0; b < num_partitions; ++b) {
-                if (occupied[b] == min_size) {
-                    ++min_sized_bucket_count;
+    // for (eid_t eid = 0; eid < num_edges; ++eid) {
+    //     edge_t e = edges[eid];
+    //     if (eid % 50000000 == 0) {
+    //         LOG(INFO) << "Processing edges " << eid;
+    //     }
+    //     vid_t u = e.first, v = e.second;
+    //     bid_t bucket = best_scored_partition(u, v); // according to ebv scoring
+    //     assign_edge(bucket, u, v, eid);
+    //     if (occupied[bucket] > max_size) {
+    //         max_size = occupied[bucket];
+    //     }
+    //     if (occupied[bucket] == min_size) {
+    //         int min_sized_bucket_count = 0;
+    //         for (bid_t b = 0; b < num_partitions; ++b) {
+    //             if (occupied[b] == min_size) {
+    //                 ++min_sized_bucket_count;
+    //             }
+    //         }
+    //         if (min_sized_bucket_count == 1) {
+    //             ++min_size;
+    //         }
+    //     }
+    // }
+
+    std::vector<edge_t> stream_edges; // temporary buffer to read edges from file
+    eid_t chunk_size = std::min(num_edges, (eid_t)100000);
+    eid_t num_remaining_edges = num_edges; // number of edges to be read from file
+
+    std::ifstream fin(binedgelist_name(basefilename),
+                      std::ios::binary | std::ios::ate);
+    fin.seekg(sizeof(num_vertices) + sizeof(num_edges), std::ios::beg); 
+
+    stream_edges.resize(chunk_size);
+
+    eid_t eid = 0; // number of edges read from file
+    while (num_remaining_edges > 0) { // edges to be read
+        fin.read((char *)&stream_edges[0], sizeof(edge_t) * chunk_size);
+        for (eid_t i = 0; i < chunk_size; ++i, ++eid) {
+            const auto& [u, v] = stream_edges[i];
+            if (eid % 50000000 == 0) {
+                LOG(INFO) << "Processing edges " << eid;
+            }
+            bid_t bucket = best_scored_partition(u, v); // according to ebv scoring
+            assign_edge(bucket, u, v, eid);
+            if (occupied[bucket] > max_size) {
+                max_size = occupied[bucket];
+            }
+            if (occupied[bucket] == min_size) {
+                int min_sized_bucket_count = 0;
+                for (bid_t b = 0; b < num_partitions; ++b) {
+                    if (occupied[b] == min_size) {
+                        ++min_sized_bucket_count;
+                    }
+                }
+                if (min_sized_bucket_count == 1) {
+                    ++min_size;
                 }
             }
-            if (min_sized_bucket_count == 1) {
-                ++min_size;
-            }
+        }
+
+        num_remaining_edges -= chunk_size;
+        if (num_remaining_edges < chunk_size) { // adapt chunk size for last batch read
+            chunk_size = num_remaining_edges;
         }
     }
 
+    partition_time.stop();
     total_time.stop();
+    LOG(INFO) << "partition time: " << total_time.get_time();
     LOG(INFO) << "total partition time: " << total_time.get_time();
-    for (bid_t b = 0; b < num_partitions; ++b) {
-        LOG(INFO) << b << ' ' << is_boundarys[b].popcount() << ' ' << occupied[b];
-    }
     calculate_stats();
 }
 

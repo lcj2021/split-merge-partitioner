@@ -3,7 +3,7 @@
 
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
-#include "graph.hpp"
+#include "ne_graph.hpp"
 #include "partitioner.hpp"
 
 class DbhPartitioner : public EdgeListEPartitioner
@@ -11,12 +11,9 @@ class DbhPartitioner : public EdgeListEPartitioner
   private:
     std::string basefilename;
 
-    double avg_edge_cnt;
+    using EdgeListEPartitioner::partition_time;
 
-    // use mmap for file input
-    int fin;
-    off_t filesize;
-    char *fin_map, *fin_ptr, *fin_end;
+    double avg_edge_cnt;
 
     edgepart_writer<vid_t, bid_t> writer;
 

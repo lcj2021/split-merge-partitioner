@@ -49,7 +49,7 @@ public:
         eid_t all_part_edge_cnt = accumulate(occupied.begin(), occupied.end(), (eid_t)0);
 
         for (bid_t b = 0; b < num_partitions; ++b) {
-            LOG(INFO) << "Bucket_info: " << b
+            LOG(INFO) << "Bucket_info: " << (uint32_t)b
                     << ", vertices: " << num_bucket_vertices[b]
                     << ", edges: " << occupied[b];
         }
@@ -119,7 +119,7 @@ public:
         eid_t all_part_edge_cnt = accumulate(occupied.begin(), occupied.end(), (eid_t)0);
 
         for (bid_t b = 0; b < num_partitions; ++b) 
-            LOG(INFO) << "Bucket_info: " << b
+            LOG(INFO) << "Bucket_info: " << (uint32_t)b
                     << ", vertices: " << num_bucket_vertices[b]
                     << ", edges: " << occupied[b];
         

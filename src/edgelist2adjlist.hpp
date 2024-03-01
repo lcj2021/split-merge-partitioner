@@ -2,7 +2,7 @@
 
 #include "util.hpp"
 #include "dense_bitset.hpp"
-#include "graph.hpp"
+#include "ne_graph.hpp"
 #include "partitioner.hpp"
 #include "conversions.hpp"
 

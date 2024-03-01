@@ -2,47 +2,108 @@
 #define GRAPH_HPP
 
 #include "common.hpp"
+#include "dense_bitset.hpp"
 
-struct uint40_t {
-    uint64_t v:40;
+struct AdjEntryVidBid {
+    vid_t vid;
+    bid_t bid;
+    AdjEntryVidBid(vid_t vid, bid_t bid) : vid(vid), bid(bid) {}
+    AdjEntryVidBid(vid_t vid) : vid(vid), bid(kInvalidBid) {}
 } __attribute__((packed));
 
-class adjlist_t
-{
-private:
-    uint40_t *adj;
-    vid_t len;
-
-public:
-    adjlist_t() : adj(NULL), len(0) {}
-    adjlist_t(uint40_t *adj, vid_t len = 0) : adj(adj), len(len) {}
-    uint40_t *begin() { return adj; }
-    uint40_t *end() { return adj + len; }
-    void increment() { len++; }
-    void push_back(size_t data) { adj[len++].v = data; }
-    size_t size() const { return len; }
-    uint40_t &operator[](size_t idx) { return adj[idx]; };
-    const uint40_t &operator[](size_t idx) const { return adj[idx]; };
-    uint40_t &back() { return adj[len - 1]; };
-    const uint40_t &back() const { return adj[len - 1]; };
-    void pop_back() { len--; }
-    void clear() { len = 0; }
+struct AdjEntryVid {
+    vid_t vid;
+    AdjEntryVid(vid_t vid) : vid(vid) {}
 };
 
-class graph_t
+template <typename TAdj>
+class AdjList 
 {
-  private:
-    vid_t num_vertices;
-    size_t nedges;
-    uint40_t *neighbors;
-    std::vector<adjlist_t> vdata;
+public:
+	TAdj *adj; // link into the column array
+    vid_t len_out;
+    vid_t len_in;
 
-  public:
-    graph_t() : num_vertices(0), nedges(0), neighbors(NULL) {}
+public:
 
-    ~graph_t()
+    AdjList() : adj(NULL), len_out(0), len_in(0) {}
+    AdjList( TAdj *adj) :  adj(adj), len_out(0), len_in(0) {}
+
+    TAdj *begin() { return adj; }
+    TAdj *end() { return adj + len_out + len_in; }
+
+    TAdj &operator[](vid_t idx) { return adj[idx]; };
+
+    vid_t size() const { return len_out + len_in; }
+    vid_t size_out() const { return len_out; }
+    vid_t size_in() const { return len_in; }
+
+    void push_back_out(TAdj data) 
     {
-        if (neighbors)
+    	adj[len_out++] = data;
+    }
+
+    void push_back_in(TAdj data, vid_t offset) 
+    {
+        // incoming neighbors are written after the outgoing neighbors.
+        adj[len_in++ + offset] = data; 
+    }
+
+
+    void erase_out(vid_t to_erase_pos) 
+    {
+        std::swap(adj[to_erase_pos], adj[size_out() - 1]);
+        std::swap(adj[size_out() - 1], adj[size() - 1]);
+        
+    	pop_back_out();
+    }
+
+    void erase_in(vid_t to_erase_pos) 
+    {
+        std::swap(adj[to_erase_pos], adj[size() - 1]);
+        pop_back_in();
+    }
+
+    void pop_back_out(){len_out--;}
+    void pop_back_in(){len_in--;}
+};
+
+template class AdjList<AdjEntryVidBid>;
+
+/// @brief: in-memory graph
+template <typename TAdj>
+class Graph 
+{
+
+public:
+    vid_t num_vertices;
+    eid_t num_edges;
+    TAdj *neighbors;
+    std::vector<AdjList<TAdj>> vdata;
+
+public:
+    Graph() : num_vertices(0), num_edges(0), neighbors(NULL) {  }
+
+    Graph(Graph&& other) noexcept
+        : num_vertices(std::exchange(other.num_vertices, 0)),
+          num_edges(std::exchange(other.num_edges, 0)),
+          neighbors(std::exchange(other.neighbors, nullptr)),
+          vdata(std::move(other.vdata))
+    {
+    }
+
+    Graph& operator=(Graph&& other) noexcept 
+    {
+        num_vertices = std::exchange(other.num_vertices, 0);
+        num_edges = std::exchange(other.num_edges, 0);
+        neighbors = std::exchange(other.neighbors, nullptr);
+        vdata = std::move(other.vdata);
+        return *this;
+    }
+
+    ~Graph()
+    {
+        if (neighbors) 
             free(neighbors);
     }
 
@@ -52,14 +113,22 @@ class graph_t
         vdata.resize(num_vertices);
     }
 
-    size_t num_edges() const { return nedges; }
+    eid_t stream_build(std::ifstream &fin, eid_t num_edges, std::vector<vid_t> &count);
 
-    void build(const std::vector<edge_t> &edges);
+    AdjList<TAdj> &operator[](eid_t idx) 
+    { 
+        return vdata[idx]; 
+    }
 
-    void build_reverse(const std::vector<edge_t> &edges);
+    const AdjList<TAdj> &operator[](eid_t idx) const 
+    {
+        return vdata[idx];
+    }
 
-    adjlist_t &operator[](size_t idx) { return vdata[idx]; };
-    const adjlist_t &operator[](size_t idx) const { return vdata[idx]; };
+
 };
+
+template class Graph<AdjEntryVidBid>;
+template class Graph<AdjEntryVid>;
 
 #endif

@@ -106,14 +106,14 @@ template <typename TAdj>
 void NePartitioner<TAdj>::split()
 {
     LOG(INFO) << "partition `" << basefilename << "'";
-    LOG(INFO) << "number of partitions: " << num_partitions;
+    LOG(INFO) << "number of partitions: " << (uint32_t)num_partitions;
 
     min_heap.reserve(num_vertices);
 
     LOG(INFO) << "partitioning...";
     partition_time.start();
     for (bucket = 0; bucket < num_partitions - 1; ++bucket) {
-        std::cerr << bucket << ", ";
+        std::cerr << (uint32_t)bucket << ", ";
         DLOG(INFO) << "sample size: " << adj_out.num_edges();
         while (occupied[bucket] < capacity) {
             vid_t d, vid;

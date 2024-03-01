@@ -6,7 +6,7 @@
 
 template <typename TAdj>
 BPartPartitioner<TAdj>::BPartPartitioner(std::string basefilename, bool need_k_split)
-    : basefilename(basefilename), rd(), gen(rd()), writer(basefilename, FLAGS_write) // Vertex partitioner must record basefilename.part 
+    : basefilename(basefilename), rd(), gen(rd()), writer(basefilename, FLAGS_write)
 {
     Timer convert_timer;
     convert_timer.start();
@@ -39,31 +39,29 @@ BPartPartitioner<TAdj>::BPartPartitioner(std::string basefilename, bool need_k_s
 
     // alpha = sqrt(num_partitions) * static_cast<double>(num_edges) / pow(num_vertices, 1.5);
 
-    adj_out.resize(num_vertices);
-    adj_in.resize(num_vertices);
+    graph.resize(num_vertices);
 
 
     vertex2bucket.assign(num_vertices, kInvalidBid);
     // capacity = static_cast<double>(num_edges) * 2 * 1.05 / FLAGS_p + 1; //will be used to as stopping criterion later
     // capacity = 1e18; //will be used to as stopping criterion later
 
-    edges.resize(num_edges);
-    fin.read((char *)&edges[0], sizeof(edge_t) * num_edges);
-
     LOG(INFO) << "constructing...";
-    adj_out.build(edges);
-    adj_in.build_reverse(edges);
 
     degrees.resize(num_vertices);
     std::ifstream degree_file(degree_name(basefilename), std::ios::binary);
     degree_file.read((char *)&degrees[0], num_vertices * sizeof(vid_t));
     degree_file.close();
     average_degree = static_cast<double>(num_edges) * 2.0 / num_vertices;
+
+    graph.stream_build(fin, num_edges, degrees);
 }
 
 template <typename TAdj>
 void BPartPartitioner<TAdj>::split()
 {
+    partition_time.start();
+
     vid_t aim_subgraph_vertex = (num_vertices + FLAGS_p - 1) / FLAGS_p;
     eid_t aim_subgraph_edge = (num_edges + FLAGS_p - 1) / FLAGS_p;
 
@@ -205,9 +203,9 @@ void BPartPartitioner<TAdj>::split()
         ++iter;
     }
     
-
+    partition_time.stop();
     total_time.stop();
-    LOG(INFO) << "total partition time: " << total_time.get_time();
+    LOG(INFO) << "partition time: " << partition_time.get_time();
     
     num_partitions = FLAGS_p;
     w_.assign(num_partitions, 0);
@@ -220,15 +218,30 @@ void BPartPartitioner<TAdj>::split()
         writer.save_vertex(vid, bucket);
         assign_vertex(bucket, vid, 0);
     }
-    for (const auto &[u, v] : edges) {
-        bid_t bu = vertex2bucket[u], bv = vertex2bucket[v];
-        if (bu != bv) {
-            occupied[bu] += 1;
-            occupied[bv] += 1;
-        } else {
-            occupied[bu] += 1;
+
+    for (vid_t vid = 0; vid < num_vertices; ++vid) {
+        auto neighbors = graph[vid];
+        for (vid_t i = 0; i < neighbors.size_out(); ++i) {
+            vid_t uid = neighbors[i].vid;
+            bid_t bu = vertex2bucket[uid], bv = vertex2bucket[vid];
+            if (bu != bv) {
+                occupied[bu] += 1;
+                occupied[bv] += 1;
+            } else {
+                occupied[bu] += 1;
+            }
         }
     }
+
+    // for (const auto &[u, v] : edges) {
+    //     bid_t bu = vertex2bucket[u], bv = vertex2bucket[v];
+    //     if (bu != bv) {
+    //         occupied[bu] += 1;
+    //         occupied[bv] += 1;
+    //     } else {
+    //         occupied[bu] += 1;
+    //     }
+    // }
 
     calculate_stats();
 }
@@ -262,15 +275,12 @@ template <typename TAdj>
 std::tuple<vid_t, vid_t>
 BPartPartitioner<TAdj>::overlap_partition_vertex(vid_t vid, bid_t bucket_id) 
 {
-    vid_t overlap = 0, neighbors_cnt = 0;
-    for (int direction = 0; direction < 2; ++direction) {
-        auto &neighbors = (direction ? adj_out[vid] : adj_in[vid]);
-        neighbors_cnt += neighbors.size();
-        for (size_t i = 0; i < neighbors.size(); ++i) {
-            vid_t uid = direction ? edges[neighbors[i].v].second : edges[neighbors[i].v].first;
-            if (is_boundarys[bucket_id].get(uid)) {
-                ++overlap;
-            }
+    AdjList<AdjEntryVid>& neighbors = graph[vid];
+    vid_t overlap = 0, neighbors_cnt = neighbors.size();
+    for (vid_t i = 0; i < neighbors.size(); ++i) {
+        vid_t uid = neighbors[i].vid;
+        if (is_boundarys[bucket_id].get(uid)) {
+            ++overlap;
         }
     }
     return {overlap, neighbors_cnt};

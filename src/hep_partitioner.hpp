@@ -17,7 +17,7 @@ private:
     std::string basefilename;
     std::random_device rd;
     std::mt19937 gen;
-    const double BALANCE_RATIO = 1.0;
+    const double BALANCE_RATIO = 1.00;
     double lambda;
     bool extended_metrics;
 

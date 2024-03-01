@@ -48,6 +48,7 @@ HybridBLPartitioner<TAdj>::HybridBLPartitioner(std::string basefilename, bool ne
     occupied.assign(num_partitions, 0);
     adj_out.resize(num_vertices);
     adj_in.resize(num_vertices);
+    // graph.resize(num_vertices);
     is_boundarys.assign(num_partitions, dense_bitset(num_vertices));
     dis.param(std::uniform_int_distribution<vid_t>::param_type(0, num_vertices - 1));
     edgelist2bucket.assign(num_edges, kInvalidBid);
@@ -74,6 +75,7 @@ HybridBLPartitioner<TAdj>::HybridBLPartitioner(std::string basefilename, bool ne
     std::ifstream degree_file(degree_name(basefilename), std::ios::binary);
     degree_file.read((char *)&degrees[0], num_vertices * sizeof(vid_t));
     degree_file.close();
+    // graph.stream_build(fin, num_edges, degrees);
     read_timer.stop();
     LOG(INFO) << "time used for graph input and construction: " << read_timer.get_time();
 };
@@ -187,6 +189,12 @@ void HybridBLPartitioner<TAdj>::fusion(bid_t machine, vid_t vid, vid_t root, vid
             Q[machine].push({uid, root, dist + 1});
         }
     }
+
+    // AdjList<AdjEntryVid>& neighbors = graph[vid];
+    // vid_t overlap = 0, neighbors_cnt = neighbors.size();
+    // for (vid_t i = 0; i < neighbors.size(); ++i) {
+    //     vid_t uid = neighbors[i].vid;
+    // }
 }
 
 template <typename TAdj>

@@ -5,6 +5,7 @@
 
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
+#include "ne_graph.hpp"
 #include "graph.hpp"
 #include "partitioner.hpp"
 
@@ -17,6 +18,7 @@ class FennelPartitioner : public AdjListVPartitioner<TAdj>
     std::mt19937 gen;
 
     using AdjListVPartitioner<TAdj>::total_time;
+    using AdjListVPartitioner<TAdj>::partition_time;
     using AdjListVPartitioner<TAdj>::num_vertices;
     using AdjListVPartitioner<TAdj>::num_edges;
     using AdjListVPartitioner<TAdj>::num_partitions;
@@ -31,7 +33,8 @@ class FennelPartitioner : public AdjListVPartitioner<TAdj>
     // off_t filesize;
     // char *fin_map, *fin_ptr, *fin_end;
 
-    graph_t adj_out, adj_in;
+    Graph<AdjEntryVid> graph;
+
     std::vector<eid_t> w_;
     vertexpart_writer<vid_t, bid_t> writer;
     

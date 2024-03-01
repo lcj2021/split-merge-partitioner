@@ -45,7 +45,7 @@ EbvPartitioner::EbvPartitioner(std::string basefilename, bool need_k_split)
     occupied.assign(num_partitions, 0);
     num_bucket_vertices.assign(num_partitions, 0);
     avg_edge_cnt = (double)num_edges / FLAGS_p;
-    edgelist2bucket.assign(num_edges, kInvalidBid);
+    // edgelist2bucket.assign(num_edges, kInvalidBid);
 
     degrees.resize(num_vertices);
     std::ifstream degree_file(degree_name(basefilename), std::ios::binary);
@@ -55,6 +55,7 @@ EbvPartitioner::EbvPartitioner(std::string basefilename, bool need_k_split)
 
 void EbvPartitioner::split()
 {
+    partition_time.start();
     // std::shuffle(edges.begin(), edges.end(), rd);
     sort(edges.begin(), edges.end(), [&](const auto &l, const auto &r) {
         vid_t lu = l.first, lv = l.second;
@@ -71,12 +72,10 @@ void EbvPartitioner::split()
             LOG(INFO) << "Processing edges " << eid;
         }
     }
+    partition_time.stop();
 
     total_time.stop();
-    LOG(INFO) << "total partition time: " << total_time.get_time();
-    for (bid_t b = 0; b < num_partitions; ++b) {
-        LOG(INFO) << b << ' ' << is_boundarys[b].popcount() << ' ' << occupied[b];
-    }
+    LOG(INFO) << "partition time: " << partition_time.get_time();
     calculate_stats();
 }
 

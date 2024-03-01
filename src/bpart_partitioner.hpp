@@ -6,6 +6,7 @@
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
 #include "graph.hpp"
+#include "ne_graph.hpp"
 #include "partitioner.hpp"
 
 template <typename TAdj>
@@ -17,6 +18,7 @@ class BPartPartitioner : public AdjListVPartitioner<TAdj>
     std::mt19937 gen;
 
     using AdjListVPartitioner<TAdj>::total_time;
+    using AdjListVPartitioner<TAdj>::partition_time;
     using AdjListVPartitioner<TAdj>::num_vertices;
     using AdjListVPartitioner<TAdj>::num_edges;
     using AdjListVPartitioner<TAdj>::num_partitions;
@@ -24,14 +26,13 @@ class BPartPartitioner : public AdjListVPartitioner<TAdj>
     using AdjListVPartitioner<TAdj>::is_boundarys;
     using AdjListVPartitioner<TAdj>::edges;
     using AdjListVPartitioner<TAdj>::degrees;
-    using AdjListVPartitioner<TAdj>::mem_graph;
     using AdjListVPartitioner<TAdj>::calculate_stats;
 
     double c_ = 0.5;
     
     std::vector<vid_t> num_bucket_vertices;
 
-    graph_t adj_out, adj_in;
+    Graph<AdjEntryVid> graph;
     std::vector<double> w_;
     vertexpart_writer<vid_t, bid_t> writer;
     std::vector<bid_t> vertex2bucket;

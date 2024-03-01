@@ -5,18 +5,13 @@
 
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
-#include "graph.hpp"
+#include "ne_graph.hpp"
 #include "partitioner.hpp"
 
 class HdrfPartitioner : public EdgeListEPartitioner
 {
   private:
     std::string basefilename;
-
-    // use mmap for file input
-    int fin;
-    off_t filesize;
-    char *fin_map, *fin_ptr, *fin_end;
 
     edgepart_writer<vid_t, bid_t> writer;
     vid_t max_degree;

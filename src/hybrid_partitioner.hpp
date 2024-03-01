@@ -7,7 +7,7 @@
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
 #include "partitioner.hpp"
-#include "graph.hpp"
+#include "ne_graph.hpp"
 
 /* Hybrid (powerlyra) */
 class HybridPartitioner : public EdgeListEPartitioner

@@ -16,8 +16,10 @@ FsmPartitioner::FsmPartitioner(std::string basefilename)
     num_partitions = FLAGS_p;
     k = FLAGS_k;
     split_partitioner = nullptr;
-    LOG(INFO) << "k = " << k
-                << ", num_partitions = " << num_partitions;
+    LOG(INFO) << "k = " << (uint32_t)k
+                << ", num_partitions = " << (uint32_t)num_partitions;
+    
+    CHECK_GT(kInvalidBid, k * num_partitions);
 
     split_method = FLAGS_method == "fsm" ? "ne" : FLAGS_method.substr(4);
     if (split_method == "ne") {

@@ -11,8 +11,6 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-#define rep(i, n) for (int i = 0; i < (int)(n); ++i)
-
 DECLARE_int32(p);
 DECLARE_int32(k);
 DECLARE_string(filename);
@@ -28,7 +26,7 @@ DECLARE_bool(hybrid_NE);
 
 using vid_t = uint32_t;
 using eid_t = uint64_t;
-using bid_t = uint16_t;
+using bid_t = uint8_t;
 const vid_t kInvalidVid = std::numeric_limits<vid_t>::max();
 const bid_t kInvalidBid = std::numeric_limits<bid_t>::max();
 const vid_t offset = (vid_t)1 << 31;

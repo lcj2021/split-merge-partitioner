@@ -46,9 +46,6 @@ HybridPartitioner::HybridPartitioner(std::string basefilename, bool need_k_split
     Timer read_timer;
     read_timer.start();
     LOG(INFO) << "loading...";
-    LOG(INFO) << sizeof(edge_t) * num_edges / 1024.0 / 1024 / 1024 << " G bytes needed for edges " << __FILE__<<":"<<__LINE__;
-    edges.resize(num_edges);
-    fin.read((char *)&edges[0], sizeof(edge_t) * num_edges);
 
     degrees.resize(num_vertices);
     std::ifstream degree_file(degree_name(basefilename), std::ios::binary);
@@ -64,23 +61,43 @@ void HybridPartitioner::split()
     LOG(INFO) << "partition `" << basefilename << "'";
     LOG(INFO) << "number of partitions: " << num_partitions;
 
-    Timer compute_timer;
-
     LOG(INFO) << "partitioning...";
-    compute_timer.start();
-    
-    for (eid_t eid = 0; eid < num_edges; ++eid) {
-        const auto& [uid, vid] = edges[eid];
-        if (degrees[vid] < degree_threshold) {
-            assign_edge(vid % num_partitions, uid, vid, eid);
-        } else {
-            assign_edge(uid % num_partitions, uid, vid, eid);
+    partition_time.start();
+
+    std::vector<edge_t> stream_edges; // temporary buffer to read edges from file
+    eid_t chunk_size = std::min(num_edges, (eid_t)100000);
+    eid_t num_remaining_edges = num_edges; // number of edges to be read from file
+
+    std::ifstream fin(binedgelist_name(basefilename),
+                      std::ios::binary | std::ios::ate);
+    fin.seekg(sizeof(num_vertices) + sizeof(num_edges), std::ios::beg); 
+
+    stream_edges.resize(chunk_size);
+
+    eid_t eid = 0; // number of edges read from file
+    while (num_remaining_edges > 0) { // edges to be read
+        fin.read((char *)&stream_edges[0], sizeof(edge_t) * chunk_size);
+        for (eid_t i = 0; i < chunk_size; ++i, ++eid) {
+            if (eid % 50000000 == 0) {
+                LOG(INFO) << "Processing edges " << eid;
+            }
+            const auto& [uid, vid] = stream_edges[i];
+            if (degrees[vid] < degree_threshold) {
+                assign_edge(vid % num_partitions, uid, vid, eid);
+            } else {
+                assign_edge(uid % num_partitions, uid, vid, eid);
+            }
+        }
+
+        num_remaining_edges -= chunk_size;
+        if (num_remaining_edges < chunk_size) { // adapt chunk size for last batch read
+            chunk_size = num_remaining_edges;
         }
     }
 
-    compute_timer.stop();
+    partition_time.stop();
 
-    LOG(INFO) << "time used for partitioning: " << compute_timer.get_time();
+    LOG(INFO) << "partition time: " << partition_time.get_time();
 
     total_time.stop();
     LOG(INFO) << "total partition time: " << total_time.get_time();

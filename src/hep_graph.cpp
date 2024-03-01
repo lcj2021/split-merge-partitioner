@@ -231,7 +231,6 @@ eid_t mem_graph_t<adj_t>::stream_build(std::ifstream &fin, eid_t num_edges, dens
 		}
 	}
     eid_t neighbors_len = index[num_vertices - 1] + degrees[num_vertices - 1];
-    LOG(INFO) << "neighbors_len: " << neighbors_len;
 
     neighbors = (adj_t *)realloc(neighbors, sizeof(adj_t) * neighbors_len); // store 2 vids for each edge
     LOG(INFO) << sizeof(adj_t) << " bytes needed for adj_t";

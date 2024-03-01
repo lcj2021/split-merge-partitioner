@@ -9,7 +9,6 @@
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
 #include "partitioner.hpp"
-#include "graph.hpp"
 #include "hep_graph.hpp"
 
 /* Fine-grained SplitMerge Partitioner (FSM) */

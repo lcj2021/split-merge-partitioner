@@ -261,7 +261,6 @@ void HepPartitioner<TAdj>::in_memory_clean_up_neighbors(vid_t vid, dense_bitset 
 	vid_t j = 0;
 
 	for(; j < num_neigh_out; ++j) {
-	    //naive vid_t u = neighbors.get_neighbor(neighbors_file, i);
 		vid_t u = neighbors.adj[i].vid;
 	    if (is_core.get(u)) { // neighbor u is in core, so edge is removed
 	    	++num_invalidated_edges;
@@ -301,7 +300,7 @@ void HepPartitioner<TAdj>::partition_in_memory()
 	bool expansion_finished = false;
 
     for (bucket = 0; bucket < num_partitions - 1; ++bucket) {
-        LOG(INFO) << bucket << ", ";
+        LOG(INFO) << (uint32_t)bucket << ", ";
 
         //DLOG(INFO) << "sample size: " << adj_out.num_edges();
         while (occupied[bucket] < capacity_in_memory) {
@@ -313,7 +312,7 @@ void HepPartitioner<TAdj>::partition_in_memory()
                     expansion_finished = true;
                     break;
                 }
-                d= mem_graph[vid].size(); // a high degree vertex will not be chosen by get free vertex. also will not be in min heap.
+                d = mem_graph[vid].size(); // a high degree vertex will not be chosen by get free vertex. also will not be in min heap.
             } else {
                 min_heap.remove(vid);
             }
@@ -413,7 +412,7 @@ template <typename TAdj>
 void HepPartitioner<TAdj>::split()
 {
     LOG(INFO) << "partition `" << basefilename << "'";
-    LOG(INFO) << "number of partitions: " << num_partitions;
+    LOG(INFO) << "number of partitions: " << (uint32_t)num_partitions;
 
     // Timer compute_timer;
 
