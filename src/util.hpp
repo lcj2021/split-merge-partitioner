@@ -30,6 +30,9 @@ inline std::string edge_partitioned_name(const std::string &basefilename)
         std::string split_method = FLAGS_method == "fsm" ? "ne" : FLAGS_method.substr(4);
         if (FLAGS_k == 1) {
             ret += split_method;
+            if (split_method == "hep") {
+                ret += "_hdf_" + std::to_string(int(FLAGS_hdf));
+            }
         } else {
             ret += "fsm_" + split_method + "_k_" + std::to_string(FLAGS_k);
         }

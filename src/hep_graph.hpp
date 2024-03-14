@@ -1,6 +1,8 @@
 #ifndef HEP_GRAPH_HPP
 #define HEP_GRAPH_HPP
 
+#include <utility>
+
 #include "common.hpp"
 #include "dense_bitset.hpp"
 

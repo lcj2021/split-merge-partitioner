@@ -19,7 +19,7 @@ class Converter
 
     vid_t get_vid(vid_t v)
     {
-        if (!name2vid.contains(v)) {
+        if (!name2vid.count(v)) {
             name2vid[v] = num_vertices;
             degrees.resize(num_vertices + 1);
             return num_vertices++;
