@@ -13,11 +13,11 @@ A `good` partition result should minimize the `yellow` vertice ratio and try to 
 
 |   ne   |   2ps   |   hdrf   |
 | :-: | :-: | :-: |
-|   <img src="images/facebook_combined.edgepart.ne.3.png" width="75%">    |   <img src="images/facebook_combined.edgepart.2ps.3.png" width="75%">   |   <img src="images/facebook_combined.edgepart.hdrf.3.png" width="75%">   |
+|   <img src="images/facebook_combined.edgepart.ne.3.png" width="100%">    |   <img src="images/facebook_combined.edgepart.2ps.3.png" width="100%">   |   <img src="images/facebook_combined.edgepart.hdrf.3.png" width="100%">   |
 
 |   ebv   |   hep10   | **fsm_hep_k2** |
 | :-: | :-: |  :-: |
-|   <img src="images/facebook_combined.edgepart.ebv.3.png" width="75%">   |   <img src="images/facebook_combined.edgepart.hep_hdf_10.3.png" width="75%">   |   <img src="images/facebook_combined.edgepart.fsm_hep_k_2.3.png" width="75%">   |
+|   <img src="images/facebook_combined.edgepart.ebv.3.png" width="100%">   |   <img src="images/facebook_combined.edgepart.hep_hdf_10.3.png" width="100%">   |   <img src="images/facebook_combined.edgepart.fsm_hep_k_2.3.png" width="100%">   |
 
 
 ## Compile
