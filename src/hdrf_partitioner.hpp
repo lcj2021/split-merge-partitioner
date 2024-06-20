@@ -1,7 +1,8 @@
 #ifndef HDRF_PARTITIONER_HPP
 #define HDRF_PARTITIONER_HPP
 
-#include <numeric>
+#include <memory>
+// #include <numeric>
 
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
@@ -13,7 +14,7 @@ class HdrfPartitioner : public EdgeListEPartitioner
   private:
     std::string basefilename;
 
-    edgepart_writer<vid_t, bid_t> writer;
+    std::unique_ptr<EdgepartWriterBase<vid_t, bid_t>> writer = nullptr;
     vid_t max_degree;
     eid_t capacity;
     eid_t min_size = 0; // currently smallest partition
@@ -22,7 +23,7 @@ class HdrfPartitioner : public EdgeListEPartitioner
 
     void assign_edge(bid_t bucket, vid_t from, vid_t to, eid_t edge_id)
     {
-        writer.save_edge(from, to, bucket);
+        writer->save_edge(from, to, bucket);
         // edgelist2bucket[edge_id] = bucket;
         ++occupied[bucket];
 

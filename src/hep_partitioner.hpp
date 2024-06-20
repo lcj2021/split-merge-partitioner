@@ -1,6 +1,7 @@
 #ifndef HEP_PARTITIONER_HPP
 #define HEP_PARTITIONER_HPP
 
+#include <memory>
 #include <random>
 
 #include "hep_min_heap.hpp"
@@ -31,8 +32,6 @@ private:
     eid_t min_size = 0; // currently smallest partition
     eid_t max_size = 0; // currently largest partition
 
-    // whether the partitions should be written to the out-file or not
-    bool write_out_partitions = false; 
     // whether edges incident to a low-degree vertex should be written out to a file. 
     // useful if this sub-graph should be analyzed separately.
     bool write_low_degree_edgelist = false; 
@@ -64,7 +63,7 @@ private:
 
 
     std::vector<vid_t> vid_id_not_in_boundary; // degrees of vertices//(num_vertices, 0);
-    edgepart_writer<vid_t, bid_t> writer;
+    std::unique_ptr<EdgepartWriterBase<vid_t, bid_t>> writer = nullptr;
     
 
     void in_memory_clean_up_neighbors(vid_t vid, dense_bitset & is_core, dense_bitset & is_boundary);
@@ -293,7 +292,7 @@ template class HepPartitioner<adj_t>;
 template <> 
 void HepPartitioner<adj_t>::assign_edge(bid_t cbucket, vid_t from, adj_t& v_e)
 {
-    writer.save_edge(from, v_e.vid, cbucket);
+    writer->save_edge(from, v_e.vid, cbucket);
     ++assigned_edges;
     ++occupied[cbucket];
     is_boundarys[cbucket].set_bit_unsync(from);
@@ -303,7 +302,7 @@ void HepPartitioner<adj_t>::assign_edge(bid_t cbucket, vid_t from, adj_t& v_e)
 template <> 
 void HepPartitioner<adj_with_bid_t>::assign_edge(bid_t cbucket, vid_t from, adj_with_bid_t& v_e)
 {
-    writer.save_edge(from, v_e.vid, cbucket);
+    writer->save_edge(from, v_e.vid, cbucket);
     ++assigned_edges;
     ++occupied[cbucket];
     is_boundarys[cbucket].set_bit_unsync(from);
@@ -315,7 +314,7 @@ void HepPartitioner<adj_with_bid_t>::assign_edge(bid_t cbucket, vid_t from, adj_
 template <> 
 void HepPartitioner<adj_t>::assign_edge(bid_t cbucket, vid_t from, vid_t to, eid_t edge_id)
 {        
-    writer.save_edge(from, to, cbucket);
+    writer->save_edge(from, to, cbucket);
     ++assigned_edges;
     ++occupied[cbucket];
     is_boundarys[cbucket].set_bit_unsync(from);
@@ -325,7 +324,7 @@ void HepPartitioner<adj_t>::assign_edge(bid_t cbucket, vid_t from, vid_t to, eid
 template <> 
 void HepPartitioner<adj_with_bid_t>::assign_edge(bid_t cbucket, vid_t from, vid_t to, eid_t edge_id)
 {
-    writer.save_edge(from, to, cbucket);
+    writer->save_edge(from, to, cbucket);
     ++assigned_edges;
     ++occupied[cbucket];
     is_boundarys[cbucket].set_bit_unsync(from);

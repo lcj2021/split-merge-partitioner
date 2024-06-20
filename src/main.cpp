@@ -21,11 +21,11 @@ DEFINE_int32(p, 32, "number of parititions");
 DEFINE_string(filename, "", "the file name of the input graph");
 DEFINE_string(filetype, "edgelist",
               "the type of input file (supports 'edgelist' and 'adjlist')");
-DEFINE_bool(write, false, "write out partition result");
+DEFINE_string(write, "none", "write out partition result (supports 'none', 'onefile' and 'multifile')");
 DEFINE_int32(k, 1, "split factor, i.e. the exact partitions count / remain partitions");
 DEFINE_bool(fastmerge, false, "use fast merge?");
-DEFINE_string(method, "sne",
-              "partition method: ne, sne, random, and dbh");
+DEFINE_string(method, "hep",
+              "partition method: hep, ne, sne, fsm_ne, fsm_hep, hdrf, hybrid, ebv and dbh");
 
 DEFINE_bool(write_low_degree_edgelist, false, "Should the list of edges incident to a low-degree vertex be written out to a file?");
 DEFINE_double(hdf, 100, "High-degree factor: hdf * average_degree = high-degree threshold (hdth). Called \\tau in the paper. Vertices with than hdth neighbors are treated specially in fast NE");

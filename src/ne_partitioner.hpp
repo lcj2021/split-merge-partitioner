@@ -1,6 +1,7 @@
 #ifndef NE_PARTITIONER_HPP
 #define NE_PARTITIONER_HPP
 
+#include <memory>
 #include <random>
 
 #include "min_heap.hpp"
@@ -49,11 +50,11 @@ private:
     std::uniform_int_distribution<vid_t> dis;
 
     bool need_k_split;
-    edgepart_writer<vid_t, bid_t> writer;
+    std::unique_ptr<EdgepartWriterBase<vid_t, bid_t>> writer = nullptr;
 
     void assign_edge(bid_t bucket, vid_t from, vid_t to, size_t edge_id)
     {
-        writer.save_edge(from, to, bucket);
+        writer->save_edge(from, to, bucket);
         if (need_k_split) {
             CHECK_EQ(edgelist2bucket[edge_id], kInvalidBid);
             edgelist2bucket[edge_id] = bucket;

@@ -1,6 +1,8 @@
 #ifndef EBV_PARTITIONER_HPP
 #define EBV_PARTITIONER_HPP
 
+#include <memory>
+
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
 #include "ne_graph.hpp"
@@ -17,12 +19,12 @@ class EbvPartitioner : public EdgeListEPartitioner
 
     std::vector<vid_t> num_bucket_vertices;
 
-    edgepart_writer<vid_t, bid_t> writer;
+    std::unique_ptr<EdgepartWriterBase<vid_t, bid_t>> writer = nullptr;
     eid_t num_vertices_all_buckets;
 
     void assign_edge(bid_t bucket, vid_t from, vid_t to, eid_t edge_id)
     {
-        writer.save_edge(from, to, bucket);
+        writer->save_edge(from, to, bucket);
         // edgelist2bucket[edge_id] = bucket;
         ++occupied[bucket];
         if (!is_boundarys[bucket].get(from)) {

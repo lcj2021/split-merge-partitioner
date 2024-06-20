@@ -19,8 +19,18 @@
 #include "vertex2edgepart.hpp"
 
 Vertex2EdgePart::Vertex2EdgePart(std::string basefilename, bool need_k_split)
-    :basefilename(basefilename), rd(), gen(rd()), writer(basefilename, !need_k_split && FLAGS_write) 
+    :basefilename(basefilename), rd(), gen(rd())
+    // , writer(basefilename, !need_k_split && FLAGS_write != "none") 
 {
+    if (need_k_split || FLAGS_write == "none") {
+        writer = std::make_unique<EdgepartWriterBase<vid_t, bid_t>>(basefilename);
+    } else {
+        if (FLAGS_write == "onefile") {
+            writer = std::make_unique<EdgepartWriterOnefile<vid_t, bid_t>>(basefilename);
+        } else if (FLAGS_write == "multifile") {
+            writer = std::make_unique<EdgepartWriterMultifile<vid_t, bid_t>>(basefilename);
+        }
+    }
     LOG(INFO) << "basefilename: " << basefilename;
     CHECK_NE(FLAGS_p, 0); num_partitions = FLAGS_p;
     CHECK_NE(FLAGS_k, 0); k = FLAGS_k;
@@ -244,7 +254,7 @@ Vertex2EdgePart::split()
     merge();
     CHECK_EQ(assigned_vertices, num_vertices);
 
-    if (FLAGS_write) 
+    if (FLAGS_write != "none") 
         LOG(INFO) << "Writing result...";
     for (const auto &edge : edges) {
         vid_t from = edge.first, to = edge.second;
@@ -253,7 +263,7 @@ Vertex2EdgePart::split()
         is_boundarys[target_p].set_bit_unsync(from);
         is_boundarys[target_p].set_bit_unsync(to);
         // from --, to --;
-        writer.save_edge(from, to, target_p);
+        writer->save_edge(from, to, target_p);
     }
 
 	calculate_stats();

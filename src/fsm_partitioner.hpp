@@ -51,7 +51,7 @@ private:
     };
     std::vector<BucketInfo> bucket_info;
 
-    edgepart_writer<vid_t, bid_t> writer;
+    std::unique_ptr<EdgepartWriterBase<vid_t, bid_t>> writer = nullptr;
 
     template<typename EdgeHandler>
     eid_t iterate_edges(EdgeHandler edge_handler)
@@ -187,7 +187,7 @@ private:
     void save_edge_hybrid()
     {
         iterate_edges([this](bid_t& edge_bucket, const vid_t& u, const vid_t& v) {
-            writer.save_edge(u, v, edge_bucket);
+            writer->save_edge(u, v, edge_bucket);
         });
     }
 

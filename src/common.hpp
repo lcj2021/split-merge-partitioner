@@ -16,7 +16,7 @@ DECLARE_int32(k);
 DECLARE_string(filename);
 DECLARE_string(filetype);
 DECLARE_string(method);
-DECLARE_bool(write);
+DECLARE_string(write);
 
 DECLARE_double(hdf);
 DECLARE_double(lambda);

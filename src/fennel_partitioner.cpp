@@ -5,7 +5,7 @@
 
 template <typename TAdj>
 FennelPartitioner<TAdj>::FennelPartitioner(std::string basefilename, bool need_k_split)
-    : basefilename(basefilename), rd(), gen(rd()), writer(basefilename, FLAGS_write) 
+    : basefilename(basefilename), rd(), gen(rd()), writer(basefilename, FLAGS_write != "none") 
 {
     Timer convert_timer;
     convert_timer.start();

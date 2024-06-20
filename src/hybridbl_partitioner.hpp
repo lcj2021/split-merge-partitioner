@@ -1,6 +1,7 @@
 #ifndef HYBRIDBL_PARTITIONER_HPP
 #define HYBRIDBL_PARTITIONER_HPP
 
+#include <memory>
 #include <queue>
 #include <random>
 #include <unordered_map>
@@ -61,11 +62,11 @@ private:
     using EdgePartitioner::calculate_stats;
 
     bool need_k_split;
-    edgepart_writer<vid_t, bid_t> writer;
+    std::unique_ptr<EdgepartWriterBase<vid_t, bid_t>> writer = nullptr;
 
     void assign_edge(bid_t bucket, vid_t from, vid_t to, eid_t edge_id)
     {
-        writer.save_edge(from, to, bucket);
+        writer->save_edge(from, to, bucket);
         CHECK_EQ(edgelist2bucket[edge_id], kInvalidBid);
         edgelist2bucket[edge_id] = bucket;
         is_boundarys[bucket].set_bit_unsync(from);

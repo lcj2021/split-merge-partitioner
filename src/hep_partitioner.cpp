@@ -3,9 +3,17 @@
 
 template <typename TAdj>
 HepPartitioner<TAdj>::HepPartitioner(std::string basefilename, bool need_k_split)
-    : basefilename(basefilename), rd(), gen(rd()), writer(basefilename, !need_k_split && FLAGS_write)
+    : basefilename(basefilename), rd(), gen(rd())
 {
-
+	if (need_k_split || FLAGS_write == "none") {
+        writer = std::make_unique<EdgepartWriterBase<vid_t, bid_t>>(basefilename);
+    } else {
+        if (FLAGS_write == "onefile") {
+            writer = std::make_unique<EdgepartWriterOnefile<vid_t, bid_t>>(basefilename);
+        } else if (FLAGS_write == "multifile") {
+            writer = std::make_unique<EdgepartWriterMultifile<vid_t, bid_t>>(basefilename);
+        }
+    }
     Timer convert_timer;
     convert_timer.start();
 
@@ -38,7 +46,6 @@ HepPartitioner<TAdj>::HepPartitioner(std::string basefilename, bool need_k_split
 
     lambda = FLAGS_lambda; //for weighing in balancing score in streaming
     extended_metrics = FLAGS_extended_metrics; // displaying extended metrics
-    write_out_partitions = FLAGS_write; // writing out partitions to file
     write_low_degree_edgelist = FLAGS_write_low_degree_edgelist; // writing low degree edgelist to file
     average_degree = (double)num_edges * 2 / num_vertices;
     assigned_edges = 0; //will take track of how many edges are assigned to a bucket so far
@@ -359,7 +366,7 @@ void HepPartitioner<TAdj>::partition_in_memory()
     in_memory_assign_remaining();
     LOG(INFO) << "Finished partitioning" << std::endl;
     LOG(INFO) << "Core vertice count: " << is_in_a_core.popcount() << ' ' << (double)is_in_a_core.popcount() / num_vertices;
-    writer.fout.close();; // flushing out the unwritten edge assignments
+    // writer.fout.close();; // flushing out the unwritten edge assignments
 
 }
 

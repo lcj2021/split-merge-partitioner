@@ -11,8 +11,17 @@ DECLARE_int32(k);
 DECLARE_bool(fastmerge);
 
 FsmPartitioner::FsmPartitioner(std::string basefilename)
-    : basefilename(basefilename), writer(basefilename, FLAGS_write)
+    : basefilename(basefilename)
 {
+    if (FLAGS_write == "none") {
+        writer = std::make_unique<EdgepartWriterBase<vid_t, bid_t>>(basefilename);
+    } else {
+        if (FLAGS_write == "onefile") {
+            writer = std::make_unique<EdgepartWriterOnefile<vid_t, bid_t>>(basefilename);
+        } else if (FLAGS_write == "multifile") {
+            writer = std::make_unique<EdgepartWriterMultifile<vid_t, bid_t>>(basefilename);
+        }
+    }
     num_partitions = FLAGS_p;
     k = FLAGS_k;
     split_partitioner = nullptr;
@@ -321,14 +330,14 @@ void FsmPartitioner::split()
 
 
 
-    if (FLAGS_write) 
+    if (FLAGS_write != "none") 
         LOG(INFO) << "Writing result...";
 
     if (split_method == "hep") {
         save_edge_hybrid();
     } else {
         for (eid_t i = 0; i < edgelist2bucket.size(); ++i) {
-            writer.save_edge(edges[i].first, edges[i].second, edgelist2bucket[i]);
+            writer->save_edge(edges[i].first, edges[i].second, edgelist2bucket[i]);
         }
     }
 

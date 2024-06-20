@@ -36,7 +36,7 @@ class FennelPartitioner : public AdjListVPartitioner<TAdj>
     Graph<AdjEntryVid> graph;
 
     std::vector<eid_t> w_;
-    vertexpart_writer<vid_t, bid_t> writer;
+    VertexpartWriter<vid_t, bid_t> writer;
     
     // std::vector<bid_t> vertex2bucket;
     eid_t capacity;

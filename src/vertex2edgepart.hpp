@@ -25,7 +25,8 @@ private:
 
     eid_t curr_edge_cnt;
 
-    edgepart_writer<vid_t, bid_t> writer;
+    std::unique_ptr<EdgepartWriterBase<vid_t, bid_t>> writer = nullptr;
+    // EdgepartWriterOnefile<vid_t, bid_t> writer;
 
     struct BucketInfo {
         dense_bitset is_mirror;

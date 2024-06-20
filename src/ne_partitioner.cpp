@@ -4,8 +4,17 @@
 template <typename TAdj>
 NePartitioner<TAdj>::NePartitioner(std::string basefilename, bool need_k_split)
     : basefilename(basefilename), rd(), gen(rd())
-    , need_k_split(need_k_split), writer(basefilename, !need_k_split && FLAGS_write)
+    , need_k_split(need_k_split)
 {
+    if (need_k_split || FLAGS_write == "none") {
+        writer = std::make_unique<EdgepartWriterBase<vid_t, bid_t>>(basefilename);
+    } else {
+        if (FLAGS_write == "onefile") {
+            writer = std::make_unique<EdgepartWriterOnefile<vid_t, bid_t>>(basefilename);
+        } else if (FLAGS_write == "multifile") {
+            writer = std::make_unique<EdgepartWriterMultifile<vid_t, bid_t>>(basefilename);
+        }
+    }
     Timer convert_timer;
     convert_timer.start();
     Converter *converter = new Converter(basefilename);

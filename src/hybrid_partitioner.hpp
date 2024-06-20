@@ -1,8 +1,8 @@
 #ifndef HYBRID_PARTITIONER_HPP
 #define HYBRID_PARTITIONER_HPP
 
+#include <memory>
 #include <random>
-#include <unordered_map>
 
 #include "dense_bitset.hpp"
 #include "part_writer.hpp"
@@ -28,11 +28,11 @@ private:
     std::uniform_int_distribution<vid_t> dis;
 
     bool need_k_split;
-    edgepart_writer<vid_t, bid_t> writer;
+    std::unique_ptr<EdgepartWriterBase<vid_t, bid_t>> writer = nullptr;
 
     void assign_edge(bid_t bucket, vid_t from, vid_t to, eid_t edge_id)
     {
-        writer.save_edge(from, to, bucket);
+        writer->save_edge(from, to, bucket);
         // CHECK_EQ(edgelist2bucket[edge_id], kInvalidBid);
         // edgelist2bucket[edge_id] = bucket;
         is_boundarys[bucket].set_bit_unsync(from);
