@@ -53,6 +53,7 @@ void convert_edgelist(std::string inputfile, Converter *converter)
 
         if (from != to) {
             converter->add_edge(from, to);
+            // converter->add_edge_raw(from, to);
         }
     }
     fclose(inf);
@@ -100,6 +101,7 @@ void convert_adjlist(std::string inputfile, Converter *converter)
                 vid_t to = atoi(t);
                 if (from != to) {
                     converter->add_edge(from, to);
+                    // converter->add_edge_raw(from, to);
                 }
                 i++;
             }

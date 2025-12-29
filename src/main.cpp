@@ -6,6 +6,7 @@
 #include "ebv_partitioner.hpp"
 #include "dbh_partitioner.hpp"
 #include "hdrf_partitioner.hpp"
+#include "rand_partitioner.hpp"
 #include "fennel_partitioner.hpp"
 #include "bpart_partitioner.hpp"
 #include "hybridbl_partitioner.hpp"
@@ -73,6 +74,8 @@ int main(int argc, char *argv[])
         partitioner = std::make_unique<DbhPartitioner>(FLAGS_filename, false);
     else if (method == "hdrf")
         partitioner = std::make_unique<HdrfPartitioner>(FLAGS_filename, false);
+    else if (method == "rand")
+        partitioner = std::make_unique<RandPartitioner>(FLAGS_filename, false);
     else if (method == "fennel")
         partitioner = std::make_unique<FennelPartitioner<adj_t>>(FLAGS_filename, false);
     else if (method == "bpart")

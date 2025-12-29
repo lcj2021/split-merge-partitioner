@@ -1,12 +1,30 @@
-cmake_minimum_required (VERSION 2.8)
+cmake_minimum_required(VERSION 3.12)
 project (FSM_partitioner)
 
 set(CMAKE_VERBOSE_MAKEFILE off)
 set(CMAKE_CXX_STANDARD 17)
 
-find_package (glog REQUIRED)
-find_package (gflags REQUIRED)
-find_package (Boost REQUIRED)
+set(CONDA_PREFIX $ENV{CONDA_PREFIX})
+message(STATUS "Conda prefix: ${CONDA_PREFIX}")
+
+set(GLOG_INCLUDE_DIRS ${CONDA_PREFIX}/include/glogs/)
+set(GFLAGS_INCLUDE_DIRS ${CONDA_PREFIX}/include/gflags/)
+
+link_directories(${CONDA_PREFIX}/lib)
+
+find_package(Threads REQUIRED)
+find_package(glog REQUIRED)
+find_package(gflags REQUIRED)
+find_package(Boost REQUIRED)
+
+include_directories(
+    ${GLOG_INCLUDE_DIRS}
+    ${GFLAGS_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIRS}
+)
+message(STATUS "Glog include dirs: ${GLOG_INCLUDE_DIRS}")
+message(STATUS "Gflags include dirs: ${GFLAGS_INCLUDE_DIRS}")
+message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
 
 # SET a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE)
@@ -38,6 +56,7 @@ add_executable (
     src/ebv_partitioner.cpp
     src/dbh_partitioner.cpp
     src/hdrf_partitioner.cpp
+    src/rand_partitioner.cpp
     src/fennel_partitioner.cpp
     src/bpart_partitioner.cpp
     src/hybridbl_partitioner.cpp
@@ -56,7 +75,7 @@ add_executable (
 
 target_link_libraries(
     main 
-    glog 
     gflags
+    glog 
     OpenMP::OpenMP_CXX
 )

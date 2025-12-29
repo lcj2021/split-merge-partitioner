@@ -13,3 +13,6 @@ cheatsheet
 task-results/
 # scripts/
 partition-results*
+
+# dataset
+dataset/*txt*

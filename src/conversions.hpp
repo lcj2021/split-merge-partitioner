@@ -60,6 +60,26 @@ class Converter
         fout.write((char *)&to, sizeof(vid_t));
     }
 
+    /// Add edge by raw vertex ids
+    virtual void add_edge_raw(vid_t from, vid_t to)
+    {
+        if (to == from) {
+            LOG(WARNING) << "Tried to add self-edge " << from << "->" << to
+                         << std::endl;
+            return;
+        }
+        num_edges++;
+        if (from >= num_vertices || to >= num_vertices) {
+            degrees.resize(std::max(from, to) + 1);
+            num_vertices = std::max(from, to) + 1;
+        }
+        degrees[from]++;
+        degrees[to]++;
+
+        fout.write((char *)&from, sizeof(vid_t));
+        fout.write((char *)&to, sizeof(vid_t));
+    }
+
     virtual void finalize() {
         fout.seekp(0);
         fout.write((char *)&num_vertices, sizeof(num_vertices));

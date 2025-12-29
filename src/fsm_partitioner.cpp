@@ -38,13 +38,14 @@ FsmPartitioner::FsmPartitioner(std::string basefilename)
     }
     // else if (split_method == "dbh") {
     //     split_partitioner = std::make_unique<DbhPartitioner>(FLAGS_filename, true);
-    // } else if (split_method == "ebv") {
-    //     split_partitioner = std::make_unique<EbvPartitioner>(FLAGS_filename, true);
-    // } else if (split_method == "hdrf") {
-    //     split_partitioner = std::make_unique<HdrfPartitioner>(FLAGS_filename, true);
-    // } else {
-    //     LOG(ERROR) << "Unknown split method!";
-    // }
+    // // } else if (split_method == "ebv") {
+    // //     split_partitioner = std::make_unique<EbvPartitioner>(FLAGS_filename, true);
+    // // } else if (split_method == "hdrf") {
+    // //     split_partitioner = std::make_unique<HdrfPartitioner>(FLAGS_filename, true);
+    // } 
+    else {
+        LOG(ERROR) << "Unknown split method!";
+    }
 
     num_vertices = split_partitioner->num_vertices;
     num_edges = split_partitioner->num_edges;

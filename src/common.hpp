@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 
 #include <gflags/gflags.h>
+#define GLOG_USE_GLOG_EXPORT
 #include <glog/logging.h>
 
 DECLARE_int32(p);

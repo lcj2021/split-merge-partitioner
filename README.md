@@ -3,7 +3,7 @@ FSM A Fine-grained Splitting and Merging Framework for Dual-balanced Graph Parti
 
 ## Visualization
 
-Here we use different algorithms to partition [ego-facebook](httpssnap.stanford.edudataego-Facebook.html) into 3 parts (edge partition, e.g., each edge is assigned to a part).
+Here we use different algorithms to partition [ego-facebook](https://snap.stanford.edu/data/ego-Facebook.html) into 3 parts (edge partition, e.g., each edge is assigned to a part).
 We use `red, green and blue` to denoted the vertices that only belong to exactly one part.
 For those vertices that lies on the boundary between multiple parts, we use `yellow` to denote them.
 By default, the numbers of edges in different parts are close.
@@ -78,23 +78,23 @@ If you want to merge with Fast Merge, please add `-fastmerge true` to the comman
 
 ### SNAP and Networkrepository
 
-[SNAP](httpsnap.stanford.edudataindex.html)
-[Networkrepository](httpsnetworkrepository.comnetworks.php)
+[SNAP](http://snap.stanford.edu/data/index.html)
+[Networkrepository](https://networkrepository.com/networks.php)
 
 ### Webgraph
 We prepare a sript for Webgraph environment setup. Run `setup_webgraph.sh` in `dataset` folder. 
-Then you can download `{graphname}.graph` and `{graphname}.properties` from [webgraph](httpslaw.di.unimi.itdatasets.php). 
+Then you can download `{graphname}.graph` and `{graphname}.properties` from [webgraph](https://law.di.unimi.it/datasets.php). 
 
 Take indochina graph as an example
 
 ```shell
-cd datasetwebgraph
+cd dataset/webgraph
 
-wget httpdata.law.di.unimi.itwebdataindochina-2004indochina-2004.graph
-wget httpdata.law.di.unimi.itwebdataindochina-2004indochina-2004.properties
+wget http://data.law.di.unimi.it/webdata/indochina-2004/indochina-2004.graph
+wget http://data.law.di.unimi.it/webdata/indochina-2004/indochina-2004.properties
 ```
 
-Use `java -cp webgraph_dep it.unimi.dsi.webgraph.ArcListASCIIGraph indochina-2004 indochina-2004.txt` to get final graph. 
+Use `java -cp "*" it.unimi.dsi.webgraph.ArcListASCIIGraph indochina-2004 indochina-2004.txt` to get final graph. 
 
 ## FAQ
 
